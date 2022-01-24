@@ -1,0 +1,15 @@
+Package: mlemur
+Type: Package
+Title: MLE MUtatution Rate Calculator
+Version: 0.5
+Date: 2022-01-19
+Author: Krystian Lazowski, Qi Zheng
+Maintainer: Krystian Lazowski <klazowski@ibb.waw.pl>
+Description: For calculating maximum likelihood-based mutation rates, confidence intervals, and P values.
+License: GPL (>= 2)
+Depends: shiny
+Imports: Rcpp (>= 1.0.5), stats, hypergeo, BH, shinyFeedback, shinyWidgets, shinyjs, writexl, readxl, rclipboard (== 0.1.3), reactable, boot
+LinkingTo: Rcpp, BH
+RoxygenNote: 7.1.2
+StagedInstall: no
+Encoding: UTF-8
