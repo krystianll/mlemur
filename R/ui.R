@@ -285,8 +285,8 @@ mlemurUI <- function(request) {
                         ))),
                         hr(),
                         "XLS(X) files only! For instructions, check Help, or see example.",
-                        a(href="example.xlsx", HTML("<i class=\"fa fa-download\" aria-hidden=\"true\"></i> Download example with comments"), download=NA, target="_blank"),
-                        a(href="template.xlsx", HTML("<i class=\"fa fa-download\" aria-hidden=\"true\"></i> Download empty template to fill"), download=NA, target="_blank"),
+                        a(href="www/example.xlsx", HTML("<i class=\"fa fa-download\" aria-hidden=\"true\"></i> Download example with comments"), download=NA, target="_blank"),
+                        a(href="www/template.xlsx", HTML("<i class=\"fa fa-download\" aria-hidden=\"true\"></i> Download empty template to fill"), download=NA, target="_blank"),
                         fluidRow(
                           column(4,
                                  offset = 4,
