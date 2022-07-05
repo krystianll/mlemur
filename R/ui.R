@@ -78,8 +78,11 @@ mlemurUI <- function(request) {
                          fluidRow(
                            column(8,
                                   offset = 2,
-                                  div(uiOutput("clip"), style =
-                                        "text-align:center")
+                                  div(actionButton(inputId = "clip",
+                                                   label = "Copy to Clipboard",
+                                                   style = "text-align:center",
+                                                   icon = icon("clipboard"),
+                                                   width = "100%"))
                            )
                          ),
                          br(),
@@ -270,8 +273,11 @@ mlemurUI <- function(request) {
                               fluidRow(
                                 column(8,
                                        offset = 2,
-                                       div(uiOutput("clip2"), style =
-                                             "text-align:center")
+                                       div(actionButton(inputId = "clip2",
+                                                        label = "Copy to Clipboard",
+                                                        style = "text-align:center",
+                                                        icon = icon("clipboard"),
+                                                        width = "100%"))
                                 )
                               )
                             )
@@ -336,7 +342,63 @@ mlemurUI <- function(request) {
                                   column(4,
                                          offset = 4,
                                          h3("Step 3: Select options"),
-                                         uiOutput("BatchOptions", inline = FALSE),
+                                         uiOutput("BatchOptionsPval", inline = FALSE),
+                                         br()
+                                  ),
+                                  column(8,
+                                         offset = 2,
+                                         tagList(
+                                           div(class = "panel panel-info",
+                                               div(class="panel-heading", h5(HTML("<font color = '#3a87ad'>mlemur tried to select the additional parameters based on your data. You can change your choice for each strain using checkboxes below:</font>"))),
+                                               div(class="panel-body",
+                                                   style="padding-bottom: 0;",
+                                                   div(style = "display:block;vertical-align:top;width:100%;",
+                                                       div(style = "display:inline-block;vertical-align:top;width:calc(100% - 390px);", HTML("")),
+                                                       div(style = "display:inline-block;vertical-align:top;width:60px;text-align:center;height:40px;", HTML("Fitness")),
+                                                       div(style = "display:inline-block;vertical-align:top;width:60px;text-align:center;height:40px;", HTML("Phen. lag")),
+                                                       div(style = "display:inline-block;vertical-align:top;width:60px;text-align:center;height:40px;", HTML("Resid. mut.")),
+                                                       div(style = "display:inline-block;vertical-align:top;width:60px;text-align:center;height:40px;", HTML("Death rate")),
+                                                       div(style = "display:inline-block;vertical-align:top;width:60px;text-align:center;height:40px;", HTML("Inoculum size")),
+                                                       div(style = "display:inline-block;vertical-align:top;width:60px;text-align:center;height:40px;", HTML("Coef. of var."))),
+                                                   div(style = "display:block;vertical-align:top;width:100%;background:#f5f5f5;padding-top:15px;margin-bottom:15px;",
+                                                       div(style = "display:inline-block;vertical-align:top;width:calc(100% - 390px);padding-bottom:15px;", HTML("<b>Toggle all</b>")),
+                                                       div(style = "display:inline-block;vertical-align:top;width:60px;padding-left:20px;",
+                                                           shinyWidgets::awesomeCheckbox(inputId = "choices_AllStrains_Fitness",
+                                                                                         label = "",
+                                                                                         status = "primary",
+                                                                                         value = FALSE)),
+                                                       div(style = "display:inline-block;vertical-align:top;width:60px;padding-left:20px;",
+                                                           shinyWidgets::awesomeCheckbox(inputId = "choices_AllStrains_Lag",
+                                                                                         label = "",
+                                                                                         status = "primary",
+                                                                                         value = FALSE)),
+                                                       div(style = "display:inline-block;vertical-align:top;width:60px;padding-left:20px;",
+                                                           shinyWidgets::awesomeCheckbox(inputId = "choices_AllStrains_Residual",
+                                                                                         label = "",
+                                                                                         status = "primary",
+                                                                                         value = FALSE)),
+                                                       div(style = "display:inline-block;vertical-align:top;width:60px;padding-left:20px;",
+                                                           shinyWidgets::awesomeCheckbox(inputId = "choices_AllStrains_Death",
+                                                                                         label = "",
+                                                                                         status = "primary",
+                                                                                         value = FALSE)),
+                                                       div(style = "display:inline-block;vertical-align:top;width:60px;padding-left:20px;",
+                                                           shinyWidgets::awesomeCheckbox(inputId = "choices_AllStrains_Inoculum",
+                                                                                         label = "",
+                                                                                         status = "primary",
+                                                                                         value = FALSE)),
+                                                       div(style = "display:inline-block;vertical-align:top;width:60px;padding-left:20px;",
+                                                           shinyWidgets::awesomeCheckbox(inputId = "choices_AllStrains_CV",
+                                                                                         label = "",
+                                                                                         status = "primary",
+                                                                                         value = FALSE)),
+                                                   )),
+                                               div(class="panel-body",
+                                                   style="max-height: 250px; overflow-y: scroll; padding-top: 0; padding-bottom: 0;",
+                                                   uiOutput("BatchOptionsChoices", inline = FALSE))))
+                                  ),
+                                  column(4,
+                                         offset = 4,
                                          h3("Step 4: Calculate"),
                                          shinyFeedback::loadingButton(
                                            "calculate4",
@@ -362,6 +424,14 @@ mlemurUI <- function(request) {
                                     id = "BatchPvalue",
                                     HTML("<h4><i>P</i> values</h4>"),
                                     reactable::reactableOutput("BatchPvalueResults"),
+                                    br()
+                                  )
+                                ),
+                                shinyjs::hidden(
+                                  div(
+                                    id = "BatchEffSize",
+                                    HTML("<h4>Effect sizes</h4>"),
+                                    reactable::reactableOutput("BatchEffSizeResults"),
                                     br()
                                   )
                                 ),

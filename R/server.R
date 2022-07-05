@@ -1,9 +1,10 @@
 mlemurServer <- function(input, output, session) {
   rv <- reactiveValues()
+  rv$BatchFirstRun <- FALSE
   
   #### Rate Validate Data ####
   rv$SettingsRateUserInput <- callModule(settingsPlating, id = "SettingsRate")
-  rv$CountsRateUserInput <- callModule(countsPlating, id = "CountsRate", userSettings=reactive(rv$SettingsRateUserInput()))
+  rv$CountsRateUserInput <- callModule(countsPlating, id = "CountsRate", userSettings=reactive(rv$SettingsRateUserInput()), stack_cols=FALSE)
   
   #### Rate Calculate ####
   observeEvent(input$calculate, {
@@ -13,9 +14,9 @@ mlemurServer <- function(input, output, session) {
       shinyjs::hide("advanced")
       shinyFeedback::resetLoadingButton("calculate")
     } else {
-      outputData <- calc.rate.int(userData)[1:15]
+      outputData <- calc.rate.int(userData)[1:14]
       results <- data.frame("Calculations" = outputData,
-                            row.names = c("&epsilon;", "N<sub>t</sub>", "CV", "&rho;", "&Lambda;", "&delta;<sub>1</sub>", "&delta;<sub>2</sub>", "m<sub>p</sub>", "&phi;",
+                            row.names = c("&epsilon;", "N<sub>t</sub>", "CV", "&rho;", "&lambda;", "d", "m<sub>p</sub>", "&phi;",
                                           "m", "m<sup>95&percnt;&ndash;</sup>", "m<sup>95&percnt;&plus;</sup>", "&mu;", "&mu;<sup>95&percnt;&ndash;</sup>", "&mu;<sup>95&percnt;&plus;</sup>"),
                             check.names = FALSE)
       output$tableRate <- reactable::renderReactable({
@@ -28,6 +29,7 @@ mlemurServer <- function(input, output, session) {
       rv$RatetoClipboard <- outputData
       output$errorBarRate <- renderText("")
       shinyjs::show("advanced")
+      # shinyFeedback::resetLoadingButton("calculate")
       shinyjs::enable("calculate")
       shinyjs::runjs("$('#calculate').html(\"<i class = 'fas fa-calculator'></i> Calculate\")")
     }
@@ -35,20 +37,13 @@ mlemurServer <- function(input, output, session) {
   })
   
   #### Rate Copy to Clipboard ####
-  output$clip <- renderUI({
-    rclipboard::rclipButton(
-      inputId = "clipbtn",
-      label = "Copy to Clipboard",
-      clipText = paste(as.character(rv$RatetoClipboard), collapse = "\n"),
-      modal = FALSE,
-      icon = icon("clipboard"),
-      width = "100%"
-    )
+  observeEvent(input$clip, {
+    clipr::write_clip(paste(as.character(rv$RatetoClipboard), collapse = "\n"))
   })
   
   #### Rate Add to Report ####
   rv$Ratereport <- data.frame(
-    "Parameters" = c("eff", "Nt", "CV", "Fitness", "Lag", "WT Death", "Mut Death", "Residual m", "Rel size of inoc", "m", "m_low", "m_up", "mu", "mu_low", "mu_up")
+    "Parameters" = c("eff", "Nt", "CV", "Fitness", "Lag", "Death rate", "Residual m", "Rel size of inoc", "m", "m_low", "m_up", "mu", "mu_low", "mu_up")
   )
   
   observeEvent(input$appendToReport, {
@@ -80,8 +75,8 @@ mlemurServer <- function(input, output, session) {
   
   #### P value Validate Data ####
   rv$SettingsPvalUserInput <- callModule(settingsPlating, id = "SettingsPval")
-  rv$CountsStrain1UserInput <- callModule(countsPlating, id = "CountsStrain1", userSettings=reactive(rv$SettingsPvalUserInput()))
-  rv$CountsStrain2UserInput <- callModule(countsPlating, id = "CountsStrain2", userSettings=reactive(rv$SettingsPvalUserInput()))
+  rv$CountsStrain1UserInput <- callModule(countsPlating, id = "CountsStrain1", userSettings=reactive(rv$SettingsPvalUserInput()), stack_cols=TRUE)
+  rv$CountsStrain2UserInput <- callModule(countsPlating, id = "CountsStrain2", userSettings=reactive(rv$SettingsPvalUserInput()), stack_cols=TRUE)
   
   #### P value Calculate ####
   observeEvent(input$calculate2, {
@@ -95,9 +90,9 @@ mlemurServer <- function(input, output, session) {
       Strain1 <- calc.rate.int(userDataStrain1)
       Strain2 <- calc.rate.int(userDataStrain2)
       results2 <- data.frame(
-        "Strain 1" = Strain1[1:15],
-        "Strain 2" = Strain2[1:15],
-        row.names = c("&epsilon;", "N<sub>t</sub>", "CV", "&rho;", "&Lambda;", "&delta;<sub>1</sub>", "&delta;<sub>2</sub>", "m<sub>p</sub>", "&phi;",
+        "Strain 1" = Strain1[1:14],
+        "Strain 2" = Strain2[1:14],
+        row.names = c("&epsilon;", "N<sub>t</sub>", "CV", "&rho;", "&lambda;", "d", "m<sub>p</sub>", "&phi;",
                       "m", "m<sup>95&percnt;&ndash;</sup>", "m<sup>95&percnt;&plus;</sup>", "&mu;", "&mu;<sup>95&percnt;&ndash;</sup>", "&mu;<sup>95&percnt;&plus;</sup>"),
         check.names = FALSE
       )
@@ -110,7 +105,7 @@ mlemurServer <- function(input, output, session) {
           pagination = FALSE,
           defaultColDef = reactable::colDef(html = TRUE))
       })
-      statistics <- calc.pval.int(userDataStrain1, userDataStrain2, as.numeric(Strain1[16]), as.numeric(Strain2[16]))
+      statistics <- calc.pval.int(userDataStrain1, userDataStrain2, as.numeric(Strain1[15]), as.numeric(Strain2[15]))
       pvalue <- statistics[1]
       output$pvalueinfo <- renderText({
         if (is.na(pvalue) == TRUE | is.nan(pvalue) == TRUE) {
@@ -126,6 +121,7 @@ mlemurServer <- function(input, output, session) {
       })
       output$errorBarPvalue <- renderText("")
       shinyjs::show("advanced2")
+      # shinyFeedback::resetLoadingButton("calculate2")
       shinyjs::enable("calculate2")
       shinyjs::runjs("$('#calculate2').html(\"<i class = 'fas fa-calculator'></i> Calculate\")")
     }
@@ -186,17 +182,13 @@ mlemurServer <- function(input, output, session) {
         )
       })
       shinyjs::show("advanced3")
+      rv$PvaltoClipboard <- paste(rv$oldPvalues, rv$newPvalues, sep = "\t", collapse = "\n")
     }
   })
   
-  output$clip2 <- renderUI({
-    rclipboard::rclipButton(
-      inputId = "clipbtn",
-      label = "Copy to Clipboard",
-      clipText = paste(rv$oldPvalues, rv$newPvalues, sep = "\t", collapse = "\n"),
-      modal = FALSE,
-      icon = icon("clipboard")
-    )
+  #### Corrector Clipboard ####
+  observeEvent(input$clip2, {
+    clipr::write_clip(paste(as.character(rv$PvaltoClipboard), collapse = "\n"))
   })
   
   #### Corrector Eraser ####
@@ -238,8 +230,8 @@ mlemurServer <- function(input, output, session) {
       userInput <- as.data.frame(cbind(rep("CountsSelective", nrow(userInput)), as.matrix(userInput)))
     }
     for (i in 2:nrow(userInput)) {
-      if (is.na(userInput[[(i-1),1]])==TRUE) {userInput[[(i-1),1]] <- "NoName"}
-      if (is.na(userInput[[(i),1]])==TRUE) {userInput[[i,1]] <- userInput[[(i-1),1]]}
+      if (is.na(userInput[[1]][i-1])) {userInput[[1]][i-1] <- "NoName"}
+      if (is.na(userInput[[1]][i])) {userInput[[1]][i] <- userInput[[1]][i-1]}
     }
     rv$DataSelective <- subset(userInput, subset = userInput[[1]]=='CountsSelective')
     rv$DataNonselective <- subset(userInput, subset = userInput[[1]]=='CountsNonselective')
@@ -251,7 +243,15 @@ mlemurServer <- function(input, output, session) {
   #### BatchCalc data checker ####
   observeEvent(input$dataCheck, {
     
+    rv$BatchFirstRun <- TRUE
+    
     validation <- comboValidator(rv$DataPlating, rv$DataSelective, rv$DataNonselective)
+    
+    for (item in c("Fitness", "Lag", "Residual", "Death", "Inoculum", "CV")) {
+      shinyWidgets::updateAwesomeCheckbox(session = session,
+                                          inputId = paste("choices", "AllStrains", item, sep = "_"),
+                                          value = FALSE)
+    }
     
     if (is.null(validation)==FALSE) {
       
@@ -262,6 +262,7 @@ mlemurServer <- function(input, output, session) {
       rv$DataPlatingForCalc <- validation[[4]]
       rv$DataSelectiveForCalc <- validation[[5]]
       rv$DataNonselectiveForCalc <- validation[[6]]
+      rv$InitialSettings <- t(apply(as.matrix(rv$DataPlatingForCalc)[c(2,3,4,5,6,13),], MARGIN=c(1,2), FUN = function(x) {if (isTruthy(x)) {x>0} else FALSE}))
       
       warningList <- validation[[7]]
       errorList <- validation[[8]]
@@ -287,14 +288,25 @@ mlemurServer <- function(input, output, session) {
         }
         shinyjs::show("ifDataCorrect")
         
-        output$BatchOptions <- renderUI({
+        choiceslist <- list()
+        
+        for (i in 1:nrow(rv$InitialSettings)) {
+          rowchoices <- list()
+          for (item in colnames(rv$InitialSettings)) {
+            rowchoices <- c(rowchoices, tagList(div(style = "display:inline-block;vertical-align:top;width:60px;padding-left:20px;",
+                                                    shinyWidgets::awesomeCheckbox(inputId = paste("choices", gsub(pattern = " ", replacement = "_", rownames(rv$InitialSettings)[i]), item, sep = "_"),
+                                                                                  label = "",
+                                                                                  status = "primary",
+                                                                                  value = rv$InitialSettings[i,item]))))
+          }
+          choiceslist <- c(choiceslist, tagList(
+            div(style = "display:block;vertical-align:top;width:100%;",
+                div(style = "display:inline-block;vertical-align:top;width:calc(100% - 390px);padding-bottom:15px;", HTML(paste(rownames(rv$InitialSettings)[i]))),
+                tagList(rowchoices))))
+        }
+        
+        output$BatchOptionsPval <- renderUI({
           tagList(
-            shinyWidgets::awesomeCheckboxGroup(
-              inputId = "batchSetParameters",
-              label = "Select parameters to use", 
-              choices = c("Coefficient of variation", "Mutant Fitness", "Phenotypic Lag", "Residual mutations", "Wild-type Cell Death Rate", "Mutant Cell Death Rate", "Inoculum size"),
-              selected = c("Coefficient of variation", "Mutant Fitness", "Phenotypic Lag", "Residual mutations", "Wild-type Cell Death Rate", "Mutant Cell Death Rate", "Inoculum size")
-            ),
             shinyjs::disabled(div(class = "checkboxdiv",
                                   shinyWidgets::awesomeCheckbox("BatchCalculateRates",
                                                                 HTML("Mutation rates are always calculated."),
@@ -323,11 +335,22 @@ mlemurServer <- function(input, output, session) {
             )}
           )
         })
+        output$BatchOptionsChoices <- renderUI({
+          tagList(choiceslist)
+        })
       }
       
       output$platingTable <- reactable::renderReactable({defaultTable(DataPlating, "Input", TRUE)})
       output$selectiveTable <- reactable::renderReactable({defaultTable(DataSelective, "No")})
       output$nonselectiveTable <- reactable::renderReactable({defaultTable(DataNonselective, "No")})
+      
+      for (item in colnames(rv$InitialSettings)) {
+        if (all(rv$InitialSettings[,item])) {
+          shinyWidgets::updateAwesomeCheckbox(session = session,
+                                              inputId = paste("choices", "AllStrains", item, sep = "_"),
+                                              value = TRUE)
+        }
+      }
       
       shinyjs::show("onDataChecked")
       
@@ -340,10 +363,149 @@ mlemurServer <- function(input, output, session) {
     
   })
   
+  #### BatchCalc toggle observers ####
+  observe({
+    lapply(X = rownames(rv$InitialSettings), FUN = function(x) {
+      observeEvent(input[[paste("choices", gsub(pattern = " ", replacement = "_", x), "Fitness", sep = "_")]], {
+        if (input[[paste("choices", gsub(pattern = " ", replacement = "_", x), "Fitness", sep = "_")]]) {
+          shinyWidgets::updateAwesomeCheckbox(session = session,
+                                              inputId = paste("choices", gsub(pattern = " ", replacement = "_", x), "Lag", sep = "_"),
+                                              value = FALSE)
+        }
+      })
+    })
+    
+    lapply(X = rownames(rv$InitialSettings), FUN = function(x) {
+      observeEvent(input[[paste("choices", gsub(pattern = " ", replacement = "_", x), "Lag", sep = "_")]], {
+        if (input[[paste("choices", gsub(pattern = " ", replacement = "_", x), "Lag", sep = "_")]]) {
+          shinyWidgets::updateAwesomeCheckbox(session = session,
+                                              inputId = paste("choices", gsub(pattern = " ", replacement = "_", x), "Fitness", sep = "_"),
+                                              value = FALSE)
+        }
+      })
+    })
+  })
+  
+  observeEvent(input$choices_AllStrains_Fitness, {
+    if (rv$BatchFirstRun) {
+      if (input$choices_AllStrains_Fitness) {
+        for (i in 1:nrow(rv$InitialSettings)) {
+          shinyWidgets::updateAwesomeCheckbox(session = session,
+                                              inputId = paste("choices", gsub(pattern = " ", replacement = "_", rownames(rv$InitialSettings)[i]), "Fitness", sep = "_"),
+                                              value = TRUE)
+        }
+        shinyWidgets::updateAwesomeCheckbox(session = session,
+                                            inputId = "choices_AllStrains_Lag",
+                                            value = FALSE)
+      } else {
+        for (i in 1:nrow(rv$InitialSettings)) {
+          shinyWidgets::updateAwesomeCheckbox(session = session,
+                                              inputId = paste("choices", gsub(pattern = " ", replacement = "_", rownames(rv$InitialSettings)[i]), "Fitness", sep = "_"),
+                                              value = FALSE)
+        }
+      }
+    }
+  })
+  
+  observeEvent(input$choices_AllStrains_Lag, {
+    if (rv$BatchFirstRun) {
+      if (input$choices_AllStrains_Lag) {
+        for (i in 1:nrow(rv$InitialSettings)) {
+          shinyWidgets::updateAwesomeCheckbox(session = session,
+                                              inputId = paste("choices", gsub(pattern = " ", replacement = "_", rownames(rv$InitialSettings)[i]), "Lag", sep = "_"),
+                                              value = TRUE)
+        }
+        shinyWidgets::updateAwesomeCheckbox(session = session,
+                                            inputId = "choices_AllStrains_Fitness",
+                                            value = FALSE)
+      } else {
+        for (i in 1:nrow(rv$InitialSettings)) {
+          shinyWidgets::updateAwesomeCheckbox(session = session,
+                                              inputId = paste("choices", gsub(pattern = " ", replacement = "_", rownames(rv$InitialSettings)[i]), "Lag", sep = "_"),
+                                              value = FALSE)
+        }
+      }
+    }
+  })
+  
+  observeEvent(input$choices_AllStrains_Residual, {
+    if (rv$BatchFirstRun) {
+      if (input$choices_AllStrains_Residual) {
+        for (i in 1:nrow(rv$InitialSettings)) {
+          shinyWidgets::updateAwesomeCheckbox(session = session,
+                                              inputId = paste("choices", gsub(pattern = " ", replacement = "_", rownames(rv$InitialSettings)[i]), "Residual", sep = "_"),
+                                              value = TRUE)
+        }
+      } else {
+        for (i in 1:nrow(rv$InitialSettings)) {
+          shinyWidgets::updateAwesomeCheckbox(session = session,
+                                              inputId = paste("choices", gsub(pattern = " ", replacement = "_", rownames(rv$InitialSettings)[i]), "Residual", sep = "_"),
+                                              value = FALSE)
+        }
+      }
+    }
+  })
+  
+  observeEvent(input$choices_AllStrains_Death, {
+    if (rv$BatchFirstRun) {
+      if (input$choices_AllStrains_Death) {
+        for (i in 1:nrow(rv$InitialSettings)) {
+          shinyWidgets::updateAwesomeCheckbox(session = session,
+                                              inputId = paste("choices", gsub(pattern = " ", replacement = "_", rownames(rv$InitialSettings)[i]), "Death", sep = "_"),
+                                              value = TRUE)
+        }
+      } else {
+        for (i in 1:nrow(rv$InitialSettings)) {
+          shinyWidgets::updateAwesomeCheckbox(session = session,
+                                              inputId = paste("choices", gsub(pattern = " ", replacement = "_", rownames(rv$InitialSettings)[i]), "Death", sep = "_"),
+                                              value = FALSE)
+        }
+      }
+    }
+  })
+  
+  observeEvent(input$choices_AllStrains_Inoculum, {
+    if (rv$BatchFirstRun) {
+      if (input$choices_AllStrains_Inoculum) {
+        for (i in 1:nrow(rv$InitialSettings)) {
+          shinyWidgets::updateAwesomeCheckbox(session = session,
+                                              inputId = paste("choices", gsub(pattern = " ", replacement = "_", rownames(rv$InitialSettings)[i]), "Inoculum", sep = "_"),
+                                              value = TRUE)
+        }
+      } else {
+        for (i in 1:nrow(rv$InitialSettings)) {
+          shinyWidgets::updateAwesomeCheckbox(session = session,
+                                              inputId = paste("choices", gsub(pattern = " ", replacement = "_", rownames(rv$InitialSettings)[i]), "Inoculum", sep = "_"),
+                                              value = FALSE)
+        }
+      }
+    }
+  })
+  
+  observeEvent(input$choices_AllStrains_CV, {
+    if (rv$BatchFirstRun) {
+      if (input$choices_AllStrains_CV) {
+        for (i in 1:nrow(rv$InitialSettings)) {
+          shinyWidgets::updateAwesomeCheckbox(session = session,
+                                              inputId = paste("choices", gsub(pattern = " ", replacement = "_", rownames(rv$InitialSettings)[i]), "CV", sep = "_"),
+                                              value = TRUE)
+        }
+      } else {
+        for (i in 1:nrow(rv$InitialSettings)) {
+          shinyWidgets::updateAwesomeCheckbox(session = session,
+                                              inputId = paste("choices", gsub(pattern = " ", replacement = "_", rownames(rv$InitialSettings)[i]), "CV", sep = "_"),
+                                              value = FALSE)
+        }
+      }
+    }
+  })
+  
   #### BatchCalc calculations ####
   observeEvent(input$calculate4, {
     t1 <- Sys.time()
-    rv$PlatingList <- lapply(rv$DataPlatingForCalc, as.list)
+    
+    rv$PlatingList <- rv$DataPlatingForCalc
+    rv$PlatingList <- lapply(rv$PlatingList, as.list)
     for (item in colnames(rv$DataPlatingForCalc)) {
       eval(parse(text = paste("names(rv$PlatingList$`", item, "`) <- rownames(rv$DataPlatingForCalc)", sep = "")))
       eval(parse(text = paste("rv$PlatingList$`", item, "`$CountsSelective <- rv$DataSelectiveForCalc$`", item, "`", sep = "")))
@@ -351,16 +513,25 @@ mlemurServer <- function(input, output, session) {
       eval(parse(text = paste("rv$PlatingList$`", item, "`$model <- TRUE", sep = "")))
       eval(parse(text = paste("rv$PlatingList$`", item, "`$setCV <- !rv$CVFromCounts[which(colnames(rv$DataPlatingForCalc)=='", item, "')]", sep = "")))
     }
-    rv$PlatingList <- removeParameters(rv$PlatingList, input$batchSetParameters)
-
-    DataRate <- lapply(rv$PlatingList, calc.rate.int)
-    NoOfMutations <- as.numeric(lapply(DataRate, function(x) {x[16]}))
-    DataRate <- as.data.frame(lapply(DataRate, function(x) {x[-16]}), check.names = FALSE)
     
-    rownames(DataRate) <- c("&epsilon;", "N<sub>t</sub>", "CV", "&rho;", "&Lambda;", "&delta;<sub>1</sub>", "&delta;<sub>2</sub>", "m<sub>p</sub>", "&phi;",
+    rv$FinalSettings <- rv$InitialSettings
+    for (i in 1:nrow(rv$InitialSettings)) {
+      for (item in colnames(rv$InitialSettings)) {
+        rv$FinalSettings[i,item] <- input[[paste("choices", gsub(pattern = " ", replacement = "_", rownames(rv$InitialSettings)[i]), item, sep = "_")]]
+      }
+    }
+    rv$PlatingList <- removeParameters(rv$PlatingList, rv$FinalSettings)
+    
+    DataRate <- lapply(rv$PlatingList, calc.rate.int)
+    filetosave <- rv$PlatingList
+    save(filetosave, file = "latest.RData")
+    NoOfMutations <- as.numeric(lapply(DataRate, function(x) {x[15]}))
+    DataRate <- as.data.frame(lapply(DataRate, function(x) {x[-15]}), check.names = FALSE)
+    
+    rownames(DataRate) <- c("&epsilon;", "N<sub>t</sub>", "CV", "&rho;", "&lambda;", "d", "m<sub>p</sub>", "&phi;",
                             "m", "m<sup>95&percnt;&ndash;</sup>", "m<sup>95&percnt;&plus;</sup>", "&mu;", "&mu;<sup>95&percnt;&ndash;</sup>", "&mu;<sup>95&percnt;&plus;</sup>")
     output$batchRateResults <- reactable::renderReactable({defaultTable(DataRate, "Parameters")})
-    rv$RateOutput <- data.frame("Parameters" = c("eff", "Nt", "CV", "Fitness", "Lag", "WTDeath", "MutantDeath", "Residual", "Inoculum", "m", "m_low", "m_up", "mu", "mu_low", "mu_up"), DataRate, check.names = FALSE)
+    rv$RateOutput <- data.frame("Parameters" = c("eff", "Nt", "CV", "Fitness", "Lag", "Death", "Residual", "Inoculum", "m", "m_low", "m_up", "mu", "mu_low", "mu_up"), DataRate, check.names = FALSE)
 
     if (input$BatchCalculatePvalues) {
       
@@ -369,7 +540,6 @@ mlemurServer <- function(input, output, session) {
       yarg <- unlist(sapply(2:table.length, function(x) x:table.length))
       
       proxy <- mapply(function(x,y) {calc.pval.int(rv$PlatingList[[x]], rv$PlatingList[[y]], NoOfMutations[[x]], NoOfMutations[[y]])}, x = xarg, y = yarg)
-      
       DataPvalue <- matrix(NA,nrow=table.length,ncol=table.length,dimnames = list(names(DataRate),names(DataRate)))
       DataPvalue[lower.tri(DataPvalue)] <- proxy
       
@@ -391,9 +561,9 @@ mlemurServer <- function(input, output, session) {
       
       rv$PvalueOutput <- data.frame("Strain" = colnames(DataPvalue), as.data.frame(DataPvalue, check.names = FALSE))
       shinyjs::show("BatchPvalue")
-      
     } else {
       shinyjs::hide("BatchPvalue")
+      shinyjs::hide("BatchEffSize")
       rv$PvalueOutput <- NULL
     }
     
