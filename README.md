@@ -1,9 +1,9 @@
 # mlemur
 ## Installation instructions (Windows)
 ### Requirements
-1. Install newest version of R (currently 4.1.2) in the default location from https://cran.r-project.org/bin/windows/base/
+1. Install newest version of R (currently 4.2.1) in the default location from https://cran.r-project.org/bin/windows/base/
 
-2. Install newest version of RTools (currently 4.0.0) in the default location from https://cran.r-project.org/bin/windows/Rtools/
+2. Install newest version of RTools (currently 4.2.0) in the default location from https://cran.r-project.org/bin/windows/Rtools/
 
 3. Recommended: install newest version of RStudio from https://www.rstudio.com/products/rstudio/download/
 ### Package installation
@@ -15,15 +15,9 @@ install.packages("devtools")
 ```
 You might be asked to confirm by clicking 'Yes' or to select server from which the packages will be downloaded - select the first one
 
-3. Install `rclipboard` 0.1.3:
+3. Install mlemur with all dependencies using the following command:
 ```
-devtools::install_version("rclipboard", version = "0.1.3", repos = "http://cran.us.r-project.org")
-```
-You might be asked if you want to update the already installed packages. Type the number corresponding to the option `None` (usually `3`) and press Enter
-
-4. Install mlemur with all dependencies using the following command:
-```
-devtools::install_github("krystianll/mlemur", ref = "master", auth_token = "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")
+devtools::install_github("krystianll/mlemur", ref = "master", auth_token = "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", dependencies = TRUE)
 ```
 You might be asked if you want to update the already installed packages. Type the number corresponding to the option `None` (usually `3`) and press Enter
 ## Running mlemur (Windows)
