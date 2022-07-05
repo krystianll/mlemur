@@ -11,57 +11,63 @@ using mpfr_20 = mp::number<mp::mpfr_float_backend<20,mp::allocate_stack>,mp::et_
 
 /// EXPERIMENT SIMULATION ///
 
-// [[Rcpp::export]]
-Rcpp::List rluria_list(const int n=10, const double rate=1e-8, const double N0=1, const double Nt=1e9, const double mut_fit=1.0, const int type=0,
-                       const double wt_dp=0, const double mut_dp=0, const double lag=0, const double e=1, const double cv=0, const int trim=0) {
-  NumericVector res(n);
+std::vector<int> r_birth_and_death(int n, double beta, double delta, double t){
+  int i;
+  std::vector<int> res(n);
+  NumericVector unif(n);
+  unif=runif(n, 0, 1);
   
-  double beta1s=1.0*(1.0-2.0*wt_dp)/(1.0-wt_dp);
-  double beta2, beta2s, delta2;
-  if (type==0){
-    beta2=mut_fit;
-    beta2s=beta2*(1.0-2.0*mut_dp)/(1.0-mut_dp);
-  } else {
-    beta2s=mut_fit*beta1s;
-    beta2=mut_fit*(1.0-mut_dp)/(1.0-2.0*mut_dp);
-  };
-  delta2=beta2*mut_dp/(1.0-mut_dp);
-  double tg=log(2)/beta2s;
+  double base=1.0+(delta-beta)/(-delta+beta*exp((beta-delta)*t));
+  double exponent=(beta*exp((beta-delta)*t)-delta)/((beta-delta)*exp((beta-delta)*t));
+  double a=delta*(exp((beta-delta)*t)-1.0)/(beta*exp((beta-delta)*t)-delta);
+  
+  for (i=0;i<n;++i){
+    if (unif[i] > a) {
+      res[i]=std::ceil(std::log((1.0-unif[i])*exponent)/log(base));
+    } else {
+      res[i]=0;
+    }
+  }
+  return res;
+}
+
+// [[Rcpp::export]]
+Rcpp::List rluria_list(const int n=10, const double rate=1e-8, const double N0=1, const double Nt=1e9, const double mut_fit=1.0,
+                       const double death_prob = 0, const double lag=0, const double e=1, const double cv=0, const int trim=0) {
+  NumericVector res(n);
+  Function gamma("rgamma");
+  
+  double beta1s=1.0*(1.0-2.0*death_prob)/(1.0-death_prob);
+  double beta2, delta2;
+  beta2=mut_fit;
+  delta2=beta2*death_prob/(1.0-death_prob);
   
   int i,j;
-  // std::vector<double> Ttot(n), Tlag(n), m(n), mutations(n);
-  NumericVector Ttot(n), Tlag(n), m(n), mutations(n);
-  // std::vector<double> Nts(n);
+  NumericVector Ttot(n), m(n), mutations(n);
   NumericVector Nts(n);
   if (cv==0) {
     Ttot[0]=log(Nt/N0)/beta1s;
-    Tlag[0]=Ttot[0]-tg*lag;
-    m[0]=rate*N0*(exp(beta1s*Tlag[0])-1.0);
+    m[0]=rate*N0*(exp(beta1s*Ttot[0])-1.0)*(1.0-death_prob)/(1.0-2*death_prob);
     Nts[0]=Nt;
     for (i=1;i<n;++i) {
       Ttot[i]=Ttot[0];
-      Tlag[i]=Tlag[0];
       m[i]=m[0];
       Nts[i]=Nt;
     };
   } else {
-    // Nts=rlognorm(log(Nt)-log(1.0+cv*cv)/2.0, sqrt(log(1.0+cv*cv)), n);
-    Nts=rlnorm(n, log(Nt)-log(1.0+cv*cv)/2.0, sqrt(log(1.0+cv*cv)));
+    // Nts=rlnorm(n, log(Nt)-log(1.0+cv*cv)/2.0, sqrt(log(1.0+cv*cv)));
+    Nts=gamma(n, 1/cv/cv, 1/Nt/cv/cv);
     for (i=0;i<n;++i) {
       Ttot[i]=log(Nts[i]/N0)/beta1s;
-      Tlag[i]=Ttot[i]-tg*lag;
-      m[i]=rate*N0*(exp(beta1s*Tlag[i])-1.0);
+      m[i]=rate*N0*(exp(beta1s*Ttot[i])-1.0)*(1.0-death_prob)/(1.0-2*death_prob);
     };
   }
   for (i=0;i<n;++i) {
-    // mutations[i]=rpoisson(m[i]);
     mutations[i]=rpois(1, m[i])[0];
   }
   
-  // std::vector<double> mt(n);
   NumericVector mt(n);
-  double epoch, p, u, mutants;
-  int R;
+  double epoch, mutants;
   
   for (i=0;i<=n-1;++i) {
     res[i]=0;
@@ -71,25 +77,24 @@ Rcpp::List rluria_list(const int n=10, const double rate=1e-8, const double N0=1
     if (mutations[i]==0) {
       res[i]+=0;
     } else {
-      // mt=runiform(mutations[i], 0, 1);
       mt=runif(mutations[i], 0, 1);
+      
       for (j=0; j<mutations[i]; j++) {
         mutants=0;
         
-        epoch=log(1.0+mt[j]*(exp(beta1s*Tlag[i])-1.0))/(beta1s);
-        p=exp(-beta2s*(Ttot[i]-epoch));
-        u=1-delta2*(exp(beta2s*(Ttot[i]-epoch))-1.0)/(beta2*exp(beta2s*(Ttot[i]-epoch))-delta2);
-        // R=rbinomial(u, 1);
-        R=rbinom(1, 1, u)[0];
+        epoch=log(1.0+mt[j]*(exp(beta1s*Ttot[i])-1.0))/(beta1s);
+        double tg=rpois(1, lag)[0]*log(2)/(beta2-delta2);
         
-        if (R==1) {
-          // mutants+=1+rgeometric(u*p);
-          mutants+=1+rgeom(1, u*p)[0];
+        if (epoch < Ttot[i]-tg) {
+          double all=r_birth_and_death(1, beta2, delta2, Ttot[i]-epoch)[0];
+          
+          mutants+=all;
+          
+          res[i]+=mutants;
         };
-        res[i]+=mutants;
       };
+      
       if (e<1) {
-        // res[i]=rbinomial(e, res[i]);
         res[i]=rbinom(1, res[i], e)[0];
       }
       if (trim>0) {
@@ -104,54 +109,40 @@ Rcpp::List rluria_list(const int n=10, const double rate=1e-8, const double N0=1
 }
 
 // [[Rcpp::export]]
-NumericVector rluria_vec(const int n=10, const double rate=1e-8, const double N0=1, const double Nt=1e9, const double mut_fit=1.0, const int type=0,
-                         const double wt_dp=0, const double mut_dp=0, const double lag=0, const double e=1, const double cv=0, const int trim=0) {
+NumericVector rluria_vec(const int n=10, const double rate=1e-8, const double N0=1, const double Nt=1e9, const double mut_fit=1.0,
+                         const double death_prob = 0, const double lag=0, const double e=1, const double cv=0, const int trim=0) {
   NumericVector res(n);
+  Function gamma("rgamma");
   
-  double beta1s=1.0*(1.0-2.0*wt_dp)/(1.0-wt_dp);
-  double beta2, beta2s, delta2;
-  if (type==0){
-    beta2=mut_fit;
-    beta2s=beta2*(1.0-2.0*mut_dp)/(1.0-mut_dp);
-  } else {
-    beta2s=mut_fit*beta1s;
-    beta2=mut_fit*(1.0-mut_dp)/(1.0-2.0*mut_dp);
-  };
-  delta2=beta2*mut_dp/(1.0-mut_dp);
-  double tg=log(2)/beta2s;
+  double beta1s=1.0*(1.0-2.0*death_prob)/(1.0-death_prob);
+  double beta2, delta2;
+  beta2=mut_fit;
+  delta2=beta2*death_prob/(1.0-death_prob);
   
   int i,j;
-  // std::vector<double> Ttot(n), Tlag(n), m(n), mutations(n);
-  NumericVector Ttot(n), Tlag(n), m(n), mutations(n);
+  NumericVector Ttot(n), m(n), mutations(n);
   if (cv==0) {
     Ttot[0]=log(Nt/N0)/beta1s;
-    Tlag[0]=Ttot[0]-tg*lag;
-    m[0]=rate*N0*(exp(beta1s*Tlag[0])-1.0);
+    m[0]=rate*N0*(exp(beta1s*Ttot[0])-1.0)*(1.0-death_prob)/(1.0-2*death_prob);
     for (i=1;i<n;++i) {
       Ttot[i]=Ttot[0];
-      Tlag[i]=Tlag[0];
       m[i]=m[0];
     };
   } else {
-    // std::vector<double> Nts(n);
     NumericVector Nts(n);
-    // Nts=rlognorm(log(Nt)-log(1.0+cv*cv)/2.0, sqrt(log(1.0+cv*cv)), n);
-    Nts=rlnorm(n, log(Nt)-log(1.0+cv*cv)/2.0, sqrt(log(1.0+cv*cv)));
+    // Nts=rlnorm(n, log(Nt)-log(1.0+cv*cv)/2.0, sqrt(log(1.0+cv*cv)));
+    Nts=gamma(n, 1/cv/cv, 1/Nt/cv/cv);
     for (i=0;i<n;++i) {
       Ttot[i]=log(Nts[i]/N0)/beta1s;
-      Tlag[i]=Ttot[i]-tg*lag;
-      m[i]=rate*N0*(exp(beta1s*Tlag[i])-1.0);
+      m[i]=rate*N0*(exp(beta1s*Ttot[i])-1.0)*(1.0-death_prob)/(1.0-2*death_prob);
     };
   }
   for (i=0;i<n;++i) {
-    // mutations[i]=rpoisson(m[i]);
     mutations[i]=rpois(1, m[i])[0];
   }
   
-  // std::vector<double> mt(n);
   NumericVector mt(n);
-  double epoch, p, u, mutants;
-  int R;
+  double epoch, mutants;
   
   for (i=0;i<=n-1;++i) {
     res[i]=0;
@@ -161,25 +152,24 @@ NumericVector rluria_vec(const int n=10, const double rate=1e-8, const double N0
     if (mutations[i]==0) {
       res[i]+=0;
     } else {
-      // mt=runiform(mutations[i], 0, 1);
       mt=runif(mutations[i], 0, 1);
+      
       for (j=0; j<mutations[i]; j++) {
         mutants=0;
         
-        epoch=log(1.0+mt[j]*(exp(beta1s*Tlag[i])-1.0))/(beta1s);
-        p=exp(-beta2s*(Ttot[i]-epoch));
-        u=1-delta2*(exp(beta2s*(Ttot[i]-epoch))-1.0)/(beta2*exp(beta2s*(Ttot[i]-epoch))-delta2);
-        // R=rbinomial(u, 1);
-        R=rbinom(1, 1, u)[0];
+        epoch=log(1.0+mt[j]*(exp(beta1s*Ttot[i])-1.0))/(beta1s);
+        double tg=rpois(1, lag)[0]*log(2)/(beta2-delta2);
         
-        if (R==1) {
-          // mutants+=1+rgeometric(u*p);
-          mutants+=1+rgeom(1, u*p)[0];
+        if (epoch < Ttot[i]-tg) {
+          double all=r_birth_and_death(1, beta2, delta2, Ttot[i]-epoch)[0];
+          
+          mutants+=all;
+          
+          res[i]+=mutants;
         };
-        res[i]+=mutants;
       };
+      
       if (e<1) {
-        // res[i]=rbinomial(e, res[i]);
         res[i]=rbinom(1, res[i], e)[0];
       }
       if (trim>0) {
@@ -196,6 +186,81 @@ NumericVector rluria_vec(const int n=10, const double rate=1e-8, const double N0
 /// AULIARY SEQUENCE FOR PROBABILITY COMPUTATION ///
 
 /// GENERAL INTEGRAL FORMULA ///
+
+// [[Rcpp::export]]
+std::vector<double> aux_seq_integrate_s(double e=1, double w=1, double d=0, double lag=0, double phi=0, int n=10) {
+  // std::vector<double> aux_seq_integrate(double e, double w, double d, double lag, double phi, int n) {
+  using namespace boost::math::quadrature;
+  tanh_sinh<double> tanh;
+  double r=1./w;
+  double l,chi,proxy,factorial;
+  int k;
+  std::vector<double> res(n+1);
+  
+  if (e==1 & d==0) {
+    auto f = [&r, &k](double x) {
+      return (r*pow(x,r)*pow(1.-x,k-1));
+    };
+    
+    res[0]=-exp(-lag+pow(2.,-r)*lag);
+    for (k=1;k<=n;++k) {
+      proxy=0;
+      factorial=1;
+      l=0;
+      chi=1;
+      do {
+        res[k]=proxy;
+        proxy+=factorial*tanh.integrate(f, pow(phi,w), chi)/(1.-phi*pow(chi,-r));
+        l++;
+        chi*=0.5;
+        if (chi < pow(phi,w)) {break;}
+        factorial*=lag/l;
+      } while ((std::abs(res[k]-proxy) > std::numeric_limits<double>::epsilon()) || (l < lag));
+      res[k]*=exp(-lag);
+    };
+    
+  } else {
+    auto f1 = [&d, &r, &e](double x) {
+      return ((r*pow(x,r-1)*((-1 + e)*x + d*(-e + x)))/(e*(-1 + x) + (-1 + d)*x));
+    };
+    auto f = [&d, &r, &k, &e](double x) {
+      return (r*pow(1.-d,2)*pow(x,r)*e/pow(e+(1.-d-e)*x,2)*pow((1.-x)/(1.+(1.-d-e)/e*x),k-1));
+    };
+    
+    proxy=0;
+    factorial=1;
+    l=0;
+    chi=1;
+    do {
+      res[0]=proxy;
+      proxy+=factorial*tanh.integrate(f1, pow(phi,w), chi)/(1.-phi*pow(chi,-r));
+      l++;
+      chi*=0.5;
+      if (chi < pow(phi,w)) {break;}
+      factorial*=lag/l;
+    } while ((std::abs(res[0]-proxy) > std::numeric_limits<double>::epsilon()) || (l < lag));
+    res[0]*=exp(-lag);
+    res[0]-=exp(-lag+pow(2.,-r)*lag);
+    
+    for (k=1;k<=n;++k) {
+      proxy=0;
+      factorial=1;
+      l=0;
+      chi=1;
+      do {
+        res[k]=proxy;
+        proxy+=factorial*tanh.integrate(f, pow(phi,w), chi)/(1.-phi*pow(chi,-r));
+        l++;
+        chi*=0.5;
+        if (chi < pow(phi,w)) {break;}
+        factorial*=lag/l;
+      } while ((std::abs(res[k]-proxy) > std::numeric_limits<double>::epsilon()) || (l < lag));
+      res[k]*=exp(-lag);
+    };
+  };
+  
+  return res;
+}
 
 // [[Rcpp::export]]
 std::vector<double> aux_seq_integrate(double e=1, double w=1, double d=0, double lag=0, double phi=0, int n=10) {
@@ -239,6 +304,18 @@ std::vector<double> aux_seq_integrate(double e=1, double w=1, double d=0, double
 }
 
 /// SEQUENCE FOR LD DISTRIBUTION WITH OPTIONAL PARTIAL PLATING AND DIFFERENTIAL GROWTH ///
+
+// template <typename Out, typename In>
+// std::vector<Out> aux_seq_exact(In e, In w, int n) {
+//   std::vector<In> seq(n+1);
+//   In r=1/w;
+//   In z=1-e;
+//   seq[0]=-1.0+r*z*boost::math::hypergeometric_pFq({static_cast<In>(1.0), static_cast<In>(1.0)}, {2.0 + r}, z)/(1.0+r);
+//   for (int i=1; i<=n; ++i) {
+//     seq[i]=boost::math::hypergeometric_pFq({r, r+1.0}, {r+i+1.0}, z)*boost::math::beta(i,r+1.0)*pow(e,r)*r;
+//   };
+//   return std::vector<Out> (seq.begin(), seq.end());
+// }
 
 // not exported
 std::vector<double> aux_seq_exact(double e, double w, int n) {
@@ -432,6 +509,53 @@ Rcpp::List aux_seq_deriv1_deriv2(double e, double w, int n, double h=1.0e-4, boo
   return Rcpp::List::create(Rcpp::Named("seq1") = deriv1,
                             Rcpp::Named("seq1") = deriv2);
 }
+
+// unsigned z, i, e;
+// template <typename X>
+// X h0 [&z](X const& x) {
+//   return (-1.0+x*z*boost::math::hypergeometric_pFq({1.0, 1.0}, {2.0 + x}, z)/(1.0+x));
+// };
+// template <typename X>
+// X hn [&z, &i, &e](X const& x) {
+//   return (boost::math::hypergeometric_pFq({x, x+1.0}, {x+i+1.0}, z)*boost::math::beta(i,x+1.0)*pow(e,x)*x);
+// };
+// template <typename R>
+// R h0(R const& r, double z) {
+//   // double x=static_cast<double>(r);
+//   // return (-1.0+r*z*boost::math::hypergeometric_pFq({static_cast<R>(1.0), 1.0}, {2.0 + r}, static_cast<R>(z))/(1.0+r));
+//   // return (-1.0+x*z*boost::math::hypergeometric_pFq({1.0, 1.0}, {2.0 + x}, z)/(1.0+x));
+//   // R res=boost::math::hypergeometric_pFq({1.0, 1.0}, {2.0 + r}, z);
+//   return (-1.0+r*z*boost::math::hypergeometric_pFq({1.0, 1.0}, {2.0 + static_cast<double>(r)}, z)/(1.0+r));
+// }
+// template <typename R>
+// R hn(R const& r, double e, int i, double z) {
+//   mpfr_20 res=boost::math::hypergeometric_pFq({static_cast<mpfr_20>(r), static_cast<mpfr_20>(r)+1.0}, {static_cast<mpfr_20>(r)+i+1.0}, z)*boost::math::beta(i,static_cast<mpfr_20>(r)+1.0)*pow(e,static_cast<mpfr_20>(r))*static_cast<mpfr_20>(r);
+//   return res;
+//   // return (boost::math::hypergeometric_pFq({r, r+1.0}, {r+i+1.0}, z)*boost::math::beta(i,r+1.0)*pow(e,r)*r);
+// }
+// 
+// // [[Rcpp::export]]
+// NumericVector aux_seq_deriv1(const double e, const double w, const int n) {
+//   using namespace boost::math::differentiation;
+//   
+//   NumericVector seq(n+1);
+//   double r=1.0/w;
+//   double z = 1.0-e;
+//   unsigned i;
+//   
+//   auto const R = make_fvar<double, 1>(r);
+//   
+//   auto const y0 = h0(R, z);
+//   seq[0]=y0.derivative(1);
+//   
+//   for(i=1;i<=n;++i) {
+//     auto const yn = hn(R, e, i, z);
+//     seq[i]=yn.derivative(1);
+//   };
+//   
+//   return seq;
+//   
+// }
 
 /// SEQUENCES FOR LD WITH PHENOTYPIC LAG ///
 
@@ -797,6 +921,611 @@ std::vector<double> aux_seq_lag_ext(double L, double e, int n, bool boost=false,
   };
   
   return(seq);
+}
+
+// [[Rcpp::export]]
+std::vector<double> aux_seq_lag_s(double e=1, double lag=0, int n=10) {
+  int k;
+  std::vector<double> hSeq(n+1);
+  double max=0;
+  
+  if (e==1){
+    hSeq[0]=-exp(-lag/2);
+    for (k=1;k<=n;++k){
+      double a=lag;
+      double proxy=0;
+      double factorial=1;
+      int x=0;
+      do {
+        hSeq[k]=proxy;
+        proxy+=factorial*(1.0-pow(1.0-pow(2,-x),k)*(1.0+k*pow(2,-x)))/k/(k+1.0);
+        x++;
+        if (x>max) {max=x;};
+        factorial*=a/x;
+      } while ((std::abs(hSeq[k]-proxy) > std::numeric_limits<double>::epsilon()) || (x < a));
+      hSeq[k]*=exp(-a);
+    };
+  } else {
+    int len=n+100;
+    std::vector<double> qSeq(len+2);
+    double odds=e/(1.0-e);
+    double a=lag;
+    double L, xi, div;
+    // q0
+    double proxy=0;
+    double factorial=1;
+    int x=0;
+    do {
+      L=pow(2,x);
+      xi=e*(1.0-L);
+      qSeq[0]=proxy;
+      proxy+=factorial*exp(-a)*odds*log(-e*L/(xi-1.0));
+      x++;
+      if (x>max) {max=x;};
+      factorial*=a/x;
+    } while ((std::abs(qSeq[0]-proxy) > std::numeric_limits<double>::epsilon()) || (x < a));
+    hSeq[0]=qSeq[0];
+    // q1
+    if (n >= 1) {
+      proxy = 0;
+      factorial = 1;
+      x = 0;
+      do {
+        L=pow(2,x);
+        xi=e*(1.0-L);
+        div=xi/(xi-1.0);
+        qSeq[1]=proxy;
+        proxy+=factorial*exp(-a)*odds*(1.0/(xi-1.0)-log(-e*L/(xi-1.0)));
+        x++;
+        if (x>max) {max=x;};
+        factorial*=a/x;
+      } while ((std::abs(qSeq[1]-proxy) > std::numeric_limits<double>::epsilon()) || (x < a));
+      hSeq[1]=-odds*qSeq[0]+qSeq[1];
+    };
+    // qn
+    if (n >= 2) {
+      for (k=2;k<=len;++k){
+        proxy = 0;
+        factorial = 1;
+        x = 0;
+        do {
+          L=pow(2,x);
+          xi=e*(1.0-L);
+          div=xi/(xi-1.0);
+          qSeq[k]=proxy;
+          proxy+=factorial*exp(-a)*odds/k/(k-1)*(1.0-(xi-k)*pow(div,k-1)/(xi-1.0));
+          x++;
+          if (x>max) {max=x;};
+          factorial*=a/x;
+        } while ((std::abs(qSeq[k]-proxy) > std::numeric_limits<double>::epsilon()) || (x < a));
+      };
+      if (e<0.5) {
+        for (k=1; k<=n-1; ++k) {
+          hSeq[k+1]=-odds*hSeq[k]+qSeq[k+1];
+        };
+      } else {
+        std::vector<double> seq2(len+1);
+        seq2[len]=(1.0-e)*qSeq[len+1];
+        for (k=len-1; k>=2; --k) {
+          seq2[k]=1/odds*(qSeq[k+1]-seq2[k+1]);
+        };
+        for (k=2; k<=n; ++k) {
+          hSeq[k]=seq2[k];
+        };
+      };
+    };
+  };
+  
+  // Rcout << max << "\n";
+  return(hSeq);
+  
+}
+
+std::vector<mpfr_20> aux_seq_lag_s(mpfr_20 e=1, mpfr_20 lag=0, int n=10) {
+  int k;
+  std::vector<mpfr_20> hSeq(n+1);
+  
+  if (e==1){
+    hSeq[0]=-exp(-lag/2);
+    for (k=1;k<=n;++k){
+      mpfr_20 a=lag;
+      mpfr_20 proxy=0;
+      mpfr_20 factorial=1;
+      int x=0;
+      do {
+        hSeq[k]=proxy;
+        proxy+=factorial*exp(-a)*(1.0-pow(1.0-pow(2,-x),k)*(1.0+k*pow(2,-x)))/k/(k+1.0);
+        x++;
+        factorial*=a/x;
+      } while ((mp::abs(hSeq[k]-proxy) > std::numeric_limits<mpfr_20>::epsilon()) || (x < a));
+    };
+  } else {
+    int len=n+100;
+    std::vector<mpfr_20> qSeq(len+2);
+    mpfr_20 odds=e/(1.0-e);
+    mpfr_20 a=lag;
+    mpfr_20 L, xi, div;
+    // q0
+    mpfr_20 proxy=0;
+    mpfr_20 factorial=1;
+    int x=0;
+    do {
+      L=pow(2,x);
+      xi=e*(1.0-L);
+      qSeq[0]=proxy;
+      proxy+=factorial*exp(-a)*odds*log(-e*L/(xi-1.0));
+      x++;
+      factorial*=a/x;
+    } while ((mp::abs(qSeq[0]-proxy) > std::numeric_limits<mpfr_20>::epsilon()) || (x < a));
+    hSeq[0]=qSeq[0];
+    // q1
+    if (n >= 1) {
+      proxy = 0;
+      factorial = 1;
+      x = 0;
+      do {
+        L=pow(2,x);
+        xi=e*(1.0-L);
+        div=xi/(xi-1.0);
+        qSeq[1]=proxy;
+        proxy+=factorial*exp(-a)*odds*(1.0/(xi-1.0)-log(-e*L/(xi-1.0)));
+        x++;
+        factorial*=a/x;
+      } while ((mp::abs(qSeq[1]-proxy) > std::numeric_limits<mpfr_20>::epsilon()) || (x < a));
+      hSeq[1]=-odds*qSeq[0]+qSeq[1];
+    };
+    // qn
+    if (n >= 2) {
+      for (k=2;k<=len;++k){
+        proxy = 0;
+        factorial = 1;
+        x = 0;
+        do {
+          L=pow(2,x);
+          xi=e*(1.0-L);
+          div=xi/(xi-1.0);
+          qSeq[k]=proxy;
+          proxy+=factorial*exp(-a)*odds/k/(k-1)*(1.0-(xi-k)*pow(div,k-1)/(xi-1.0));
+          x++;
+          factorial*=a/x;
+        } while ((mp::abs(qSeq[k]-proxy) > std::numeric_limits<mpfr_20>::epsilon()) || (x < a));
+      };
+      if (e<0.5) {
+        for (k=1; k<=n-1; ++k) {
+          hSeq[k+1]=-odds*hSeq[k]+qSeq[k+1];
+        };
+      } else {
+        std::vector<mpfr_20> seq2(len+1);
+        seq2[len]=(1.0-e)*qSeq[len+1];
+        for (k=len-1; k>=2; --k) {
+          seq2[k]=1/odds*(qSeq[k+1]-seq2[k+1]);
+        };
+        for (k=2; k<=n; ++k) {
+          hSeq[k]=seq2[k];
+        };
+      };
+    };
+  };
+  
+  return(hSeq);
+  
+}
+
+// [[Rcpp::export]]
+std::vector<double> aux_seq_lag_s_deriv1(double e=1, double lag=0, int n=10) {
+  int k;
+  std::vector<double> hSeq(n+1);
+  double max=0;
+  
+  if (e==1){
+    hSeq[0]=exp(-3*lag/4);
+    for (k=1;k<=n;++k){
+      double a=lag;
+      double proxy=0;
+      double factorial=1;
+      double div, L;
+      int x=0;
+      do {
+        hSeq[k]=proxy;
+        L=pow(2,x);
+        div=(L-1.0)/L;
+        proxy+=-factorial*pow(div,k-1)/pow(L,3);;
+        x++;
+        if (x>max) {max=x;};
+        factorial*=a/x;
+      } while ((std::abs(hSeq[k]-proxy) > std::numeric_limits<double>::epsilon()) || (x < a));
+      hSeq[k]*=exp(-a);
+    };
+  } else {
+    int len=n+100;
+    std::vector<double> qSeq(len+2);
+    double odds=e/(1.0-e);
+    double a=lag;
+    double L, xi, div;
+    // q0
+    double proxy=0;
+    double factorial=1;
+    int x=0;
+    do {
+      L=pow(2,x);
+      xi=e*(1.0-L);
+      qSeq[0]=proxy;
+      proxy+=-factorial*exp(-a)*e/L/(xi-1.0);
+      x++;
+      if (x>max) {max=x;};
+      factorial*=a/x;
+    } while ((std::abs(qSeq[0]-proxy) > std::numeric_limits<double>::epsilon()) || (x < a));
+    hSeq[0]=qSeq[0];
+    // q1
+    if (n >= 1) {
+      proxy = 0;
+      factorial = 1;
+      x = 0;
+      do {
+        L=pow(2,x);
+        xi=e*(1.0-L);
+        div=xi/(xi-1.0);
+        qSeq[1]=proxy;
+        proxy+=factorial*exp(-a)*odds/L*(2*e-1.0-e*xi)/pow(xi-1,2);
+        x++;
+        if (x>max) {max=x;};
+        factorial*=a/x;
+      } while ((std::abs(qSeq[1]-proxy) > std::numeric_limits<double>::epsilon()) || (x < a));
+      hSeq[1]=-odds*qSeq[0]+qSeq[1];
+    };
+    // qn
+    if (n >= 2) {
+      for (k=2;k<=len;++k){
+        proxy = 0;
+        factorial = 1;
+        x = 0;
+        do {
+          L=pow(2,x);
+          xi=e*(1.0-L);
+          div=xi/(xi-1.0);
+          qSeq[k]=proxy;
+          proxy+=factorial*exp(-a)*odds*e*pow(div,k-2)/pow(xi-1,3);
+          x++;
+          if (x>max) {max=x;};
+          factorial*=a/x;
+        } while ((std::abs(qSeq[k]-proxy) > std::numeric_limits<double>::epsilon()) || (x < a));
+      };
+      if (e<0.5) {
+        for (k=1; k<=n-1; ++k) {
+          hSeq[k+1]=-odds*hSeq[k]+qSeq[k+1];
+        };
+      } else {
+        std::vector<double> seq2(len+1);
+        seq2[len]=(1.0-e)*qSeq[len+1];
+        for (k=len-1; k>=2; --k) {
+          seq2[k]=1/odds*(qSeq[k+1]-seq2[k+1]);
+        };
+        for (k=2; k<=n; ++k) {
+          hSeq[k]=seq2[k];
+        };
+      };
+    };
+  };
+  
+  // Rcout << max << "\n";
+  return(hSeq);
+  
+}
+
+// not exported
+std::vector<mpfr_20> aux_seq_lag_s_deriv1(mpfr_20 e=1, mpfr_20 lag=0, int n=10) {
+  int k;
+  std::vector<mpfr_20> hSeq(n+1);
+  mpfr_20 max=0;
+  
+  if (e==1){
+    hSeq[0]=exp(-3*lag/4);
+    for (k=1;k<=n;++k){
+      mpfr_20 a=lag;
+      mpfr_20 proxy=0;
+      mpfr_20 factorial=1;
+      mpfr_20 div, L;
+      int x=0;
+      do {
+        hSeq[k]=proxy;
+        L=pow(2,x);
+        div=(L-1.0)/L;
+        proxy+=-factorial*pow(div,k-1)/pow(L,3);;
+        x++;
+        if (x>max) {max=x;};
+        factorial*=a/x;
+      } while ((mp::abs(hSeq[k]-proxy) > std::numeric_limits<mpfr_20>::epsilon()) || (x < a));
+      hSeq[k]*=exp(-a);
+    };
+  } else {
+    int len=n+100;
+    std::vector<mpfr_20> qSeq(len+2);
+    mpfr_20 odds=e/(1.0-e);
+    mpfr_20 a=lag;
+    mpfr_20 L, xi, div;
+    // q0
+    mpfr_20 proxy=0;
+    mpfr_20 factorial=1;
+    int x=0;
+    do {
+      L=pow(2,x);
+      xi=e*(1.0-L);
+      qSeq[0]=proxy;
+      proxy+=-factorial*exp(-a)*e/L/(xi-1.0);
+      x++;
+      if (x>max) {max=x;};
+      factorial*=a/x;
+    } while ((mp::abs(qSeq[0]-proxy) > std::numeric_limits<mpfr_20>::epsilon()) || (x < a));
+    hSeq[0]=qSeq[0];
+    // q1
+    if (n >= 1) {
+      proxy = 0;
+      factorial = 1;
+      x = 0;
+      do {
+        L=pow(2,x);
+        xi=e*(1.0-L);
+        div=xi/(xi-1.0);
+        qSeq[1]=proxy;
+        proxy+=factorial*exp(-a)*odds/L*(2*e-1.0-e*xi)/pow(xi-1,2);
+        x++;
+        if (x>max) {max=x;};
+        factorial*=a/x;
+      } while ((mp::abs(qSeq[1]-proxy) > std::numeric_limits<mpfr_20>::epsilon()) || (x < a));
+      hSeq[1]=-odds*qSeq[0]+qSeq[1];
+    };
+    // qn
+    if (n >= 2) {
+      for (k=2;k<=len;++k){
+        proxy = 0;
+        factorial = 1;
+        x = 0;
+        do {
+          L=pow(2,x);
+          xi=e*(1.0-L);
+          div=xi/(xi-1.0);
+          qSeq[k]=proxy;
+          proxy+=factorial*exp(-a)*odds*e*pow(div,k-2)/pow(xi-1,3);
+          x++;
+          if (x>max) {max=x;};
+          factorial*=a/x;
+        } while ((mp::abs(qSeq[k]-proxy) > std::numeric_limits<mpfr_20>::epsilon()) || (x < a));
+      };
+      if (e<0.5) {
+        for (k=1; k<=n-1; ++k) {
+          hSeq[k+1]=-odds*hSeq[k]+qSeq[k+1];
+        };
+      } else {
+        std::vector<mpfr_20> seq2(len+1);
+        seq2[len]=(1.0-e)*qSeq[len+1];
+        for (k=len-1; k>=2; --k) {
+          seq2[k]=1/odds*(qSeq[k+1]-seq2[k+1]);
+        };
+        for (k=2; k<=n; ++k) {
+          hSeq[k]=seq2[k];
+        };
+      };
+    };
+  };
+  
+  // Rcout << max << "\n";
+  return(hSeq);
+  
+}
+
+// [[Rcpp::export]]
+std::vector<double> aux_seq_lag_s_deriv2(double e=1, double lag=0, int n=10) {
+  int k;
+  std::vector<double> hSeq(n+1);
+  double max=0;
+  
+  if (e==1){
+    hSeq[0]=-2*exp(-0.875*lag);
+    for (k=1;k<=n;++k){
+      double a=lag;
+      double proxy=0;
+      double factorial=1;
+      double div, L;
+      int x=0;
+      do {
+        hSeq[k]=proxy;
+        L=pow(2,x);
+        div=(L-1.0)/L;
+        proxy+=factorial*(3*L-k-2.0)*pow(div,k-2)/pow(L,5);
+        x++;
+        if (x>max) {max=x;};
+        factorial*=a/x;
+      } while ((std::abs(hSeq[k]-proxy) > std::numeric_limits<double>::epsilon()) || (x < a));
+      hSeq[k]*=exp(-a);
+    };
+  } else {
+    int len=n+100;
+    std::vector<double> qSeq(len+2);
+    double odds=e/(1.0-e);
+    double a=lag;
+    double L, xi, div;
+    // q0
+    double proxy=0;
+    double factorial=1;
+    int x=0;
+    do {
+      L=pow(2,x);
+      xi=e*(1.0-L);
+      qSeq[0]=proxy;
+      proxy+=-factorial*exp(-a)*e*((2*L-1.0)*e+1.0)/L/L/pow(xi-1.0,2);
+      x++;
+      if (x>max) {max=x;};
+      factorial*=a/x;
+    } while ((std::abs(qSeq[0]-proxy) > std::numeric_limits<double>::epsilon()) || (x < a));
+    hSeq[0]=qSeq[0];
+    // q1
+    if (n >= 1) {
+      proxy = 0;
+      factorial = 1;
+      x = 0;
+      do {
+        L=pow(2,x);
+        xi=e*(1.0-L);
+        div=xi/(xi-1.0);
+        qSeq[1]=proxy;
+        proxy+=-factorial*exp(-a)*odds*(-1.0+3.0*xi+3.0*e*e*(2.0*L-1.0)+e*e*e*(1.0-3.0*L+2.0*L*L))/L/L/pow(1.0-xi,3);
+        x++;
+        if (x>max) {max=x;};
+        factorial*=a/x;
+      } while ((std::abs(qSeq[1]-proxy) > std::numeric_limits<double>::epsilon()) || (x < a));
+      hSeq[1]=-odds*qSeq[0]+qSeq[1];
+    };
+    // qn
+    if (n >= 2) {
+      for (k=2;k<=len;++k){
+        proxy = 0;
+        factorial = 1;
+        x = 0;
+        do {
+          L=pow(2,x);
+          xi=e*(1.0-L);
+          div=xi/(xi-1.0);
+          qSeq[k]=proxy;
+          proxy+=factorial*exp(-a)*odds*pow(div,k)*(2.0-3*xi-k)/e/pow(1.0-xi,2)/pow(L-1.0,3);
+          x++;
+          if (x>max) {max=x;};
+          factorial*=a/x;
+        } while ((std::abs(qSeq[k]-proxy) > std::numeric_limits<double>::epsilon()) || (x < a));
+      };
+      if (e<0.5) {
+        for (k=1; k<=n-1; ++k) {
+          hSeq[k+1]=-odds*hSeq[k]+qSeq[k+1];
+        };
+      } else {
+        std::vector<double> seq2(len+1);
+        seq2[len]=(1.0-e)*qSeq[len+1];
+        for (k=len-1; k>=2; --k) {
+          seq2[k]=1/odds*(qSeq[k+1]-seq2[k+1]);
+        };
+        for (k=2; k<=n; ++k) {
+          hSeq[k]=seq2[k];
+        };
+      };
+    };
+  };
+  
+  // Rcout << max << "\n";
+  return(hSeq);
+}
+
+// not exported
+std::vector<mpfr_20> aux_seq_lag_s_deriv2(mpfr_20 e=1, mpfr_20 lag=0, int n=10) {
+  int k;
+  std::vector<mpfr_20> hSeq(n+1);
+  mpfr_20 max=0;
+  
+  if (e==1){
+    hSeq[0]=-2*exp(-0.875*lag);
+    for (k=1;k<=n;++k){
+      mpfr_20 a=lag;
+      mpfr_20 proxy=0;
+      mpfr_20 factorial=1;
+      mpfr_20 div, L;
+      int x=0;
+      do {
+        hSeq[k]=proxy;
+        L=pow(2,x);
+        div=(L-1.0)/L;
+        proxy+=factorial*(3*L-k-2.0)*pow(div,k-2)/pow(L,5);
+        x++;
+        if (x>max) {max=x;};
+        factorial*=a/x;
+      } while ((mp::abs(hSeq[k]-proxy) > std::numeric_limits<mpfr_20>::epsilon()) || (x < a));
+      hSeq[k]*=exp(-a);
+    };
+  } else {
+    int len=n+100;
+    std::vector<mpfr_20> qSeq(len+2);
+    mpfr_20 odds=e/(1.0-e);
+    mpfr_20 a=lag;
+    mpfr_20 L, xi, div;
+    // q0
+    mpfr_20 proxy=0;
+    mpfr_20 factorial=1;
+    int x=0;
+    do {
+      L=pow(2,x);
+      xi=e*(1.0-L);
+      qSeq[0]=proxy;
+      proxy+=-factorial*exp(-a)*e*((2*L-1.0)*e+1.0)/L/L/pow(xi-1.0,2);
+      x++;
+      if (x>max) {max=x;};
+      factorial*=a/x;
+    } while ((mp::abs(qSeq[0]-proxy) > std::numeric_limits<mpfr_20>::epsilon()) || (x < a));
+    hSeq[0]=qSeq[0];
+    // q1
+    if (n >= 1) {
+      proxy = 0;
+      factorial = 1;
+      x = 0;
+      do {
+        L=pow(2,x);
+        xi=e*(1.0-L);
+        div=xi/(xi-1.0);
+        qSeq[1]=proxy;
+        proxy+=-factorial*exp(-a)*odds*(-1.0+3.0*xi+3.0*e*e*(2.0*L-1.0)+e*e*e*(1.0-3.0*L+2.0*L*L))/L/L/pow(1.0-xi,3);
+        x++;
+        if (x>max) {max=x;};
+        factorial*=a/x;
+      } while ((mp::abs(qSeq[1]-proxy) > std::numeric_limits<mpfr_20>::epsilon()) || (x < a));
+      hSeq[1]=-odds*qSeq[0]+qSeq[1];
+    };
+    // qn
+    if (n >= 2) {
+      for (k=2;k<=len;++k){
+        proxy = 0;
+        factorial = 1;
+        x = 0;
+        do {
+          L=pow(2,x);
+          xi=e*(1.0-L);
+          div=xi/(xi-1.0);
+          qSeq[k]=proxy;
+          proxy+=factorial*exp(-a)*odds*pow(div,k)*(2.0-3*xi-k)/e/pow(1.0-xi,2)/pow(L-1.0,3);
+          x++;
+          if (x>max) {max=x;};
+          factorial*=a/x;
+        } while ((mp::abs(qSeq[k]-proxy) > std::numeric_limits<mpfr_20>::epsilon()) || (x < a));
+      };
+      if (e<0.5) {
+        for (k=1; k<=n-1; ++k) {
+          hSeq[k+1]=-odds*hSeq[k]+qSeq[k+1];
+        };
+      } else {
+        std::vector<mpfr_20> seq2(len+1);
+        seq2[len]=(1.0-e)*qSeq[len+1];
+        for (k=len-1; k>=2; --k) {
+          seq2[k]=1/odds*(qSeq[k+1]-seq2[k+1]);
+        };
+        for (k=2; k<=n; ++k) {
+          hSeq[k]=seq2[k];
+        };
+      };
+    };
+  };
+  
+  // Rcout << max << "\n";
+  return(hSeq);
+}
+
+// [[Rcpp::export]]
+std::vector<double> aux_seq_lag_s_ext(double e, double lag, int n, bool boost=false) {
+  std::vector<double> res(n+1);
+  if (boost) {
+    std::vector<mpfr_20> res2(n+1);
+    res2=aux_seq_lag_s(static_cast<mpfr_20>(e), static_cast<mpfr_20>(lag), n);
+    for(int k=0;k<=n;++k){
+      res[k]=static_cast<double>(res2[k]);
+    };
+  } else {
+    res=aux_seq_lag_s(e, lag, n);
+  }
+  return res;
 }
 
 /// SEQUENCE FOR LD WITH CELL DEATH ///
@@ -1380,7 +2109,8 @@ std::vector<mpfr_20> prob_pois_deriv2_2(const mpfr_20 lambda, std::vector<mpfr_2
 std::vector<double> prob_mutations(double m, int n, double e=1, double w=1, double cv=0, double death=0, double lag=0, double phi=0, double poisson=0){
   std::vector<double> seq(n);
   std::vector<double> prob(n);
-
+  // Function aux_seq_integrate("aux.seq.integrate"); 
+  
   if (death==0 & lag==0 & phi==0) {
     seq=aux_seq(e, w, n-1);
   } else if (lag!=0 & w==1 & death==0 & phi==0) {
@@ -1834,6 +2564,72 @@ void loglik_boost(double &loglik, const double &m, std::vector<double> &seq, con
   loglik=static_cast<double>(xloglik);
 }
 
+// void optim_alpha(double &alpha, const double &current_m, const double &current_U, const double &current_loglik,
+//                  std::vector<double> &seq, const int &len, std::vector<int> &data, const double &k, const double &poisson){
+//   alpha=1000.0;
+//   double beta=0.1;
+//   double new_loglik,new_m;
+//   int iter=0;
+//   do {
+//     iter++;
+//     if(iter>200) {alpha=0; break;};
+//     alpha*=0.5;
+//     new_m=current_m+alpha*current_U;
+//     if(new_m<0){
+//       new_loglik=2*current_loglik;
+//     } else {
+//       loglik(new_loglik, new_m, seq, len, data, k, poisson);
+//       if(!std::isfinite(new_loglik)) {loglik_boost(new_loglik, new_m, seq, len, data, k, poisson);};
+//     };
+//   } while (current_loglik-new_loglik>=-alpha*beta*current_U*current_U);
+// }
+// 
+// // [[Rcpp::export]]
+// std::vector<double> optim_m(double current_m, std::vector<double> &seq, const int &len, std::vector<int> &data, const double &k, const double &poisson, bool verbose=false){
+//   int iter=0;
+//   double new_m,new_U,new_J,new_loglik,current_U,current_J,current_loglik;
+//   double alpha;
+//   
+//   derivatives(current_U, current_J, current_loglik, current_m, seq, len, data, k, poisson);
+//   if ((!std::isfinite(current_U)) || (!std::isfinite(current_J)) || (!std::isfinite(current_loglik))) {
+//     derivatives_boost(current_U, current_J, current_loglik, current_m, seq, len, data, k, poisson);
+//   };
+//   if(verbose) {Rcout<< "U: " << current_U << " J: " << current_J << " loglik: " << current_loglik << " m: " << current_m << "\n\n";};
+//   if ((!std::isfinite(current_U)) || (!std::isfinite(current_J)) || (!std::isfinite(current_loglik))) {return {-1.0};};
+//   
+//   while(std::abs(current_U)>1.0e-6){
+//     iter++;
+//     // if (iter>50) {return {-1.0};};
+//     
+//     new_m=current_m+current_U/current_J;
+//     
+//     derivatives(new_U, new_J, new_loglik, new_m, seq, len, data, k, poisson);
+//     if ((!std::isfinite(new_U)) || (!std::isfinite(new_J)) || (!std::isfinite(new_loglik))) {derivatives_boost(new_U, new_J, new_loglik, new_m, seq, len, data, k, poisson);};
+// 
+//     if(verbose) {Rcout << "newton:: iter: " << iter << " U: " << new_U << " J: " << new_J << " loglik: " << new_loglik << " m: " << new_m << "\n";};
+//     
+//     if ((!std::isfinite(new_U)) || (!std::isfinite(new_J)) || (!std::isfinite(new_loglik)) || (new_m<=0) || (new_m>1.0e6) || (new_loglik<current_loglik)){
+//       optim_alpha(alpha, current_m, current_U, current_loglik, seq, len, data, k, poisson);
+//       if(alpha==0) {return {-1.0};};
+//       new_m=current_m+alpha*current_U;
+//       
+//       derivatives(new_U, new_J, new_loglik, new_m, seq, len, data, k, poisson);
+//       if ((!std::isfinite(new_U)) || (!std::isfinite(new_J)) || (!std::isfinite(new_loglik))) {
+//         derivatives_boost(new_U, new_J, new_loglik, new_m, seq, len, data, k, poisson);
+//       };
+//       if ((!std::isfinite(new_U)) || (!std::isfinite(new_J)) || (!std::isfinite(new_loglik))) {return {-1.0};};
+//       
+//       if(verbose) {Rcout << "gradient:: alpha: " << alpha << " iter: " << iter << " U: " << new_U << " J: " << new_J << " loglik: " << new_loglik << " m: " << new_m << "\n";};
+//     };
+//     
+//     current_m=new_m;
+//     current_U=new_U;
+//     current_J=new_J;
+//     current_loglik=new_loglik;
+//   }
+//   return std::vector<double>{current_m, current_U, current_J, current_loglik};
+// }
+
 // [[Rcpp::export]]
 std::vector<double> optim_m(double current_m, double lower_m, double upper_m, std::vector<double> &seq, const int &len, std::vector<int> &data, const double &k, const double &poisson, bool verbose=false){
   int iter=0;
@@ -1908,6 +2704,7 @@ std::vector<double> optim_m(double current_m, double lower_m, double upper_m, st
     
     derivatives(new_U, new_J, new_loglik, new_m, seq, len, data, k, poisson);
     if ((!std::isfinite(new_U)) || (!std::isfinite(new_J)) || (!std::isfinite(new_loglik))) {derivatives_boost(new_U, new_J, new_loglik, new_m, seq, len, data, k, poisson);};
+    // if ((!std::isfinite(new_U)) || (!std::isfinite(new_J)) || (!std::isfinite(new_loglik)) || (new_U>lower_U) || (new_U<upper_U)) {return {-1.0};};
     if ((!std::isfinite(new_U)) || (!std::isfinite(new_J)) || (!std::isfinite(new_loglik))) {return {-1.0};};
     
     if(verbose) {Rcout << "U: " << new_U << " J: " << new_J << " loglik: " << new_loglik << "\n";};
@@ -1952,6 +2749,8 @@ double root_m(double current_m, double lower_m, double upper_m, std::vector<doub
         loglik(upper_loglik, upper_m, seq, len, data, k, poisson);
         if(!std::isfinite(upper_loglik)) {loglik_boost(upper_loglik, upper_m, seq, len, data, k, poisson);};
         upper_loglik-=lalpha;
+        // Rcout << lower_m << " " << upper_m << "\n";
+        // Rcout << lower_loglik << " " << upper_loglik << "\n";
       };
     } else {
       int n=0;
@@ -1966,6 +2765,8 @@ double root_m(double current_m, double lower_m, double upper_m, std::vector<doub
         loglik(lower_loglik, lower_m, seq, len, data, k, poisson);
         if(!std::isfinite(lower_loglik)) {loglik_boost(lower_loglik, lower_m, seq, len, data, k, poisson);};
         lower_loglik-=lalpha;
+        // Rcout << lower_m << " " << upper_m << "\n";
+        // Rcout << lower_loglik << " " << upper_loglik << "\n";
       };
     };
   };
@@ -1991,38 +2792,49 @@ double root_m(double current_m, double lower_m, double upper_m, std::vector<doub
     
     new_m=current_m-current_loglik/current_U;
     if(verbose) {Rcout << "newton:: iter: " << iter << " m: " << new_m << "\n";};
+    
     if((new_m<lower_m) || (new_m>upper_m)){
       new_m=(lower_m+upper_m)/2;
       if(verbose) {Rcout << "bisection:: m: " << new_m << "\n";};
       
-      derivatives(new_U, new_J, new_loglik, new_m, seq, len, data, k, poisson);
-      if ((!std::isfinite(new_U)) || (!std::isfinite(new_J)) || (!std::isfinite(new_loglik))) {derivatives_boost(new_U, new_J, new_loglik, new_m, seq, len, data, k, poisson);};
-      new_loglik-=lalpha;
+      // derivatives(new_U, new_J, new_loglik, new_m, seq, len, data, k, poisson);
+      // if ((!std::isfinite(new_U)) || (!std::isfinite(new_J)) || (!std::isfinite(new_loglik))) {derivatives_boost(new_U, new_J, new_loglik, new_m, seq, len, data, k, poisson);};
+      // new_loglik-=lalpha;
       
-      if (((lower_loglik<upper_loglik) && (new_loglik<0)) || ((lower_loglik>upper_loglik) && (new_loglik>0))) {
-        lower_m=new_m;
-        lower_loglik=new_loglik;
-      } else if (((lower_loglik<upper_loglik) && (new_loglik>0)) || ((lower_loglik>upper_loglik) && (new_loglik<0))) {
-        upper_m=new_m;
-        upper_loglik=new_loglik;
-      };
-    } else {
-      derivatives(new_U, new_J, new_loglik, new_m, seq, len, data, k, poisson);
-      if ((!std::isfinite(new_U)) || (!std::isfinite(new_J)) || (!std::isfinite(new_loglik))) {derivatives_boost(new_U, new_J, new_loglik, new_m, seq, len, data, k, poisson);};
-      new_loglik-=lalpha;
-    };
+      // if (((lower_loglik<upper_loglik) && (new_loglik<0)) || ((lower_loglik>upper_loglik) && (new_loglik>0))) {
+      //   lower_m=new_m;
+      //   lower_loglik=new_loglik;
+      // } else if (((lower_loglik<upper_loglik) && (new_loglik>0)) || ((lower_loglik>upper_loglik) && (new_loglik<0))) {
+      //   upper_m=new_m;
+      //   upper_loglik=new_loglik;
+      // };
+    } // else {
+    // derivatives(new_U, new_J, new_loglik, new_m, seq, len, data, k, poisson);
+    // if ((!std::isfinite(new_U)) || (!std::isfinite(new_J)) || (!std::isfinite(new_loglik))) {derivatives_boost(new_U, new_J, new_loglik, new_m, seq, len, data, k, poisson);};
+    // new_loglik-=lalpha;
+    // };
     
     derivatives(new_U, new_J, new_loglik, new_m, seq, len, data, k, poisson);
     if ((!std::isfinite(new_U)) || (!std::isfinite(new_J)) || (!std::isfinite(new_loglik))) {derivatives_boost(new_U, new_J, new_loglik, new_m, seq, len, data, k, poisson);};
     new_loglik-=lalpha;
     
+    if (((lower_loglik<upper_loglik) && (new_loglik<0)) || ((lower_loglik>upper_loglik) && (new_loglik>0))) {
+      lower_m=new_m;
+      lower_loglik=new_loglik;
+    } else if (((lower_loglik<upper_loglik) && (new_loglik>0)) || ((lower_loglik>upper_loglik) && (new_loglik<0))) {
+      upper_m=new_m;
+      upper_loglik=new_loglik;
+    };
+    
+    // derivatives(new_U, new_J, new_loglik, new_m, seq, len, data, k, poisson);
+    // if ((!std::isfinite(new_U)) || (!std::isfinite(new_J)) || (!std::isfinite(new_loglik))) {derivatives_boost(new_U, new_J, new_loglik, new_m, seq, len, data, k, poisson);};
+    // new_loglik-=lalpha;
+    
     if(verbose) {Rcout << "U: " << new_U << " J: " << new_J << " loglik: " << new_loglik << "\n";};
     
     if ((!std::isfinite(new_U)) || (!std::isfinite(new_J)) || (!std::isfinite(new_loglik))) {return -1.0;};
     
-    current_m=new_m;
-    current_U=new_U;
-    current_loglik=new_loglik;
+    current_m=new_m;current_U=new_U;current_loglik=new_loglik;
     
     // if ((new_loglik<std::min(lower_loglik, upper_loglik)) || (new_loglik>std::max(lower_loglik, upper_loglik))){
     //   
@@ -2146,18 +2958,36 @@ void derivatives_joint(double &U_1, double &U_2, double &J_11, double &J_12, dou
     std::vector<double> seq(len),seq1(len),seq2(len);
     
     if (option=="lag") {
-      double L=pow(2,param*param);
-      double log2=0.693147180559945;
-      double dLdparam=L*log2*2*param;
-      double d2Ldparam2=dLdparam*(log2*2*param+1/param);
-      double dLdparam2=dLdparam*dLdparam;
-      seq=aux_seq_lag(L,e,len-1);
-      seq1=aux_seq_lag_deriv1(L,e,len-1);
-      seq2=aux_seq_lag_deriv2(L,e,len-1);
+      // double L=pow(2,param*param);
+      // double log2=0.693147180559945;
+      // double dLdparam=L*log2*2*param;
+      // double d2Ldparam2=dLdparam*(log2*2*param+1/param);
+      // double dLdparam2=dLdparam*dLdparam;
+      // seq=aux_seq_lag(L,e,len-1);
+      // seq1=aux_seq_lag_deriv1(L,e,len-1);
+      // seq2=aux_seq_lag_deriv2(L,e,len-1);
+      // for (i=0;i<len;++i) {
+      //   seq2[i]=seq2[i]*dLdparam2+seq1[i]*d2Ldparam2;
+      //   seq1[i]=seq1[i]*dLdparam;
+      // }; // derivatives with respect to a (number of generations of lag)
+      double h=1e-4;
+      std::vector<double> seqplus(len), seqminus(len);
+      volatile double whp=param*param*(1.0+h);
+      volatile double whm=param*param*(1.0-h);
+      double dwp=whp-param*param;
+      double dwm=param*param-whm;
+      double dw=whp-whm;
+      seq=aux_seq_lag_s(e, param*param, len-1);
+      seqplus=aux_seq_lag_s(e, whp, len-1);
+      seqminus=aux_seq_lag_s(e, whm, len-1);
       for (i=0;i<len;++i) {
-        seq2[i]=seq2[i]*dLdparam2+seq1[i]*d2Ldparam2;
-        seq1[i]=seq1[i]*dLdparam;
-      }; // derivatives with respect to a (number of generations of lag)
+        seq1[i]=(seqplus[i]-seqminus[i])/dw;
+        seq2[i]=(seqplus[i]+seqminus[i]-2*seq[i])/dwp/dwm;
+      };
+      for (i=0;i<len;++i) {
+        seq2[i]=seq2[i]*2*param*2*param+seq1[i]*2;
+        seq1[i]=seq1[i]*2*param;
+      };
     } else {
       double h=1e-4;
       std::vector<double> seqplus(len), seqminus(len);
@@ -2210,6 +3040,9 @@ void derivatives_joint(double &U_1, double &U_2, double &J_11, double &J_12, dou
       prob_lc_2[i]=prob_lc_2[i]*4*sqrtm*sqrtm+prob_lc_1[i]*2;
       prob_lc_1[i]*=2*sqrtm;
     };
+    // prob_p=prob_pois(param, len);
+    // prob_p_1=prob_pois_deriv1(param, prob_p, len);
+    // prob_p_2=prob_pois_deriv2(param, prob_p, len);
     prob_p=prob_pois_2(param, len);
     prob_p_1=prob_pois_deriv1_2(param, prob_p, len);
     prob_p_2=prob_pois_deriv2_2(param, prob_p, len);
@@ -2249,18 +3082,36 @@ void derivatives_joint_boost(double &U_1, double &U_2, double &J_11, double &J_1
     std::vector<mpfr_20> seq(len),seq1(len),seq2(len);
     
     if (option=="lag") {
-      mpfr_20 L=pow(2,xparam*xparam);
-      mpfr_20 log2=0.693147180559945;
-      mpfr_20 dLdparam=L*log2*2*xparam;
-      mpfr_20 d2Ldparam2=dLdparam*(log2*2*xparam+1/xparam);
-      mpfr_20 dLdparam2=dLdparam*dLdparam;
-      seq=aux_seq_lag(L,xe,len-1);
-      seq1=aux_seq_lag_deriv1(L,xe,len-1);
-      seq2=aux_seq_lag_deriv2(L,xe,len-1);
+      // mpfr_20 L=pow(2,xparam*xparam);
+      // mpfr_20 log2=0.693147180559945;
+      // mpfr_20 dLdparam=L*log2*2*xparam;
+      // mpfr_20 d2Ldparam2=dLdparam*(log2*2*xparam+1/xparam);
+      // mpfr_20 dLdparam2=dLdparam*dLdparam;
+      // seq=aux_seq_lag(L,xe,len-1);
+      // seq1=aux_seq_lag_deriv1(L,xe,len-1);
+      // seq2=aux_seq_lag_deriv2(L,xe,len-1);
+      // for (i=0;i<len;++i) {
+      //   seq2[i]=seq2[i]*dLdparam2+seq1[i]*d2Ldparam2;
+      //   seq1[i]=seq1[i]*dLdparam;
+      // }; // derivatives with respect to a (number of generations of lag)
+      mpfr_20 h=1e-4;
+      std::vector<mpfr_20> seqplus(len), seqminus(len);
+      mpfr_20 whp=xparam*xparam*(1.0+h);
+      mpfr_20 whm=xparam*xparam*(1.0-h);
+      mpfr_20 dwp=whp-xparam*xparam;
+      mpfr_20 dwm=xparam*xparam-whm;
+      mpfr_20 dw=whp-whm;
+      seq=aux_seq_lag_s(xe, xparam*xparam, len-1);
+      seqplus=aux_seq_lag_s(xe, whp, len-1);
+      seqminus=aux_seq_lag_s(xe, whm, len-1);
       for (i=0;i<len;++i) {
-        seq2[i]=seq2[i]*dLdparam2+seq1[i]*d2Ldparam2;
-        seq1[i]=seq1[i]*dLdparam;
-      }; // derivatives with respect to a (number of generations of lag)
+        seq1[i]=(seqplus[i]-seqminus[i])/dw;
+        seq2[i]=(seqplus[i]+seqminus[i]-2*seq[i])/dwp/dwm;
+      };
+      for (i=0;i<len;++i) {
+        seq2[i]=seq2[i]*2*xparam*2*xparam+seq1[i]*2;
+        seq1[i]=seq1[i]*2*xparam;
+      };
     } else {
       mpfr_20 h=1e-4;
       std::vector<mpfr_20> seqplus(len), seqminus(len);
@@ -2313,6 +3164,9 @@ void derivatives_joint_boost(double &U_1, double &U_2, double &J_11, double &J_1
       prob_lc_2[i]=prob_lc_2[i]*4*xsqrtm*xsqrtm+prob_lc_1[i]*2;
       prob_lc_1[i]*=2*xsqrtm;
     };
+    // prob_p=prob_pois(xparam, len);
+    // prob_p_1=prob_pois_deriv1(xparam, prob_p, len);
+    // prob_p_2=prob_pois_deriv2(xparam, prob_p, len);
     prob_p=prob_pois_2(xparam, len);
     prob_p_1=prob_pois_deriv1_2(xparam, prob_p, len);
     prob_p_2=prob_pois_deriv2_2(xparam, prob_p, len);
@@ -2347,7 +3201,8 @@ std::vector<double> optim_m_const_param(double current_m, double lower_m, double
   double poisson=0, U1=0, U2=0, J11=0, J12=0, J22=0, loglik=0;
   
   if (option == "lag") {
-    seq=aux_seq_lag(pow(2,param*param), e, len-1);
+    // seq=aux_seq_lag(pow(2,param*param), e, len-1);
+    seq=aux_seq_lag_s(e, param*param, len-1);
   } else if (option == "growth") {
     seq=aux_seq_boost(e, param*param, len-1);
   } else if (option == "mixed") {
@@ -2377,17 +3232,36 @@ void derivatives_param(double &U_2, double &J_22, double &logprob, const double 
     std::vector<double> seq(len),seq1(len),seq2(len);
     
     if (option=="lag") {
-      double L=pow(2,param*param);
-      double log2=0.693147180559945;
-      double dLdparam=L*log2*2*param;
-      double d2Ldparam2=dLdparam*(log2*2*param+1/param);
-      double dLdparam2=dLdparam*dLdparam;
-      seq=aux_seq_lag(L,e,len-1);
-      seq1=aux_seq_lag_deriv1(L,e,len-1);
-      seq2=aux_seq_lag_deriv2(L,e,len-1);
+      // double L=pow(2,param*param);
+      // double log2=0.693147180559945;
+      // double dLdparam=L*log2*2*param;
+      // double d2Ldparam2=dLdparam*(log2*2*param+1/param);
+      // double dLdparam2=dLdparam*dLdparam;
+      // seq=aux_seq_lag(L,e,len-1);
+      // seq1=aux_seq_lag_deriv1(L,e,len-1);
+      // seq2=aux_seq_lag_deriv2(L,e,len-1);
+      // for (i=0;i<len;++i) {
+      //   seq2[i]=seq2[i]*dLdparam2+seq1[i]*d2Ldparam2;
+      //   seq1[i]=seq1[i]*dLdparam;
+      // };
+      double h=1e-4;
+      std::vector<double> seqplus(len), seqminus(len);
+      volatile double whp=param*param*(1.0+h);
+      volatile double whm=param*param*(1.0-h);
+      double dwp=whp-param*param;
+      double dwm=param*param-whm;
+      double dw=whp-whm;
+      seq=aux_seq_lag_s(e, param*param, len-1);
+      seqplus=aux_seq_lag_s(e, whp, len-1);
+      seqminus=aux_seq_lag_s(e, whm, len-1);
       for (i=0;i<len;++i) {
-        seq2[i]=seq2[i]*dLdparam2+seq1[i]*d2Ldparam2;
-        seq1[i]=seq1[i]*dLdparam;
+        // Rcout << seq[i] << "\n";
+        seq1[i]=(seqplus[i]-seqminus[i])/dw;
+        seq2[i]=(seqplus[i]+seqminus[i]-2*seq[i])/dwp/dwm;
+      };
+      for (i=0;i<len;++i) {
+        seq2[i]=seq2[i]*2*param*2*param+seq1[i]*2;
+        seq1[i]=seq1[i]*2*param;
       };
     } else {
       double h=1e-4;
@@ -2413,6 +3287,7 @@ void derivatives_param(double &U_2, double &J_22, double &logprob, const double 
     prob=prob_ld(sqrtm*sqrtm, seq, len);
     prob_01=prob_ld_deriv(seq1, prob, len);
     for (i=0;i<=len-1;++i){
+      // Rcout << prob[i] << "\n";
       prob_01[i]*=sqrtm*sqrtm;
     };
     std::vector<double> seq1_prob_01(len);
@@ -2458,17 +3333,35 @@ void derivatives_param_boost(double &U_2, double &J_22, double &loglik, const do
     std::vector<mpfr_20> seq(len),seq1(len),seq2(len);
     
     if (option=="lag") {
-      mpfr_20 L=pow(2,xparam*xparam);
-      mpfr_20 log2=0.693147180559945;
-      mpfr_20 dLdparam=L*log2*2*xparam;
-      mpfr_20 d2Ldparam2=dLdparam*(log2*2*xparam+1/xparam);
-      mpfr_20 dLdparam2=dLdparam*dLdparam;
-      seq=aux_seq_lag(L,xe,len-1);
-      seq1=aux_seq_lag_deriv1(L,xe,len-1);
-      seq2=aux_seq_lag_deriv2(L,xe,len-1);
+      // mpfr_20 L=pow(2,xparam*xparam);
+      // mpfr_20 log2=0.693147180559945;
+      // mpfr_20 dLdparam=L*log2*2*xparam;
+      // mpfr_20 d2Ldparam2=dLdparam*(log2*2*xparam+1/xparam);
+      // mpfr_20 dLdparam2=dLdparam*dLdparam;
+      // seq=aux_seq_lag(L,xe,len-1);
+      // seq1=aux_seq_lag_deriv1(L,xe,len-1);
+      // seq2=aux_seq_lag_deriv2(L,xe,len-1);
+      // for (i=0;i<len;++i) {
+      //   seq2[i]=seq2[i]*dLdparam2+seq1[i]*d2Ldparam2;
+      //   seq1[i]=seq1[i]*dLdparam;
+      // };
+      mpfr_20 h=1e-4;
+      std::vector<mpfr_20> seqplus(len), seqminus(len);
+      mpfr_20 whp=xparam*xparam*(1.0+h);
+      mpfr_20 whm=xparam*xparam*(1.0-h);
+      mpfr_20 dwp=whp-xparam*xparam;
+      mpfr_20 dwm=xparam*xparam-whm;
+      mpfr_20 dw=whp-whm;
+      seq=aux_seq_lag_s(xe, xparam*xparam, len-1);
+      seqplus=aux_seq_lag_s(xe, whp, len-1);
+      seqminus=aux_seq_lag_s(xe, whm, len-1);
       for (i=0;i<len;++i) {
-        seq2[i]=seq2[i]*dLdparam2+seq1[i]*d2Ldparam2;
-        seq1[i]=seq1[i]*dLdparam;
+        seq1[i]=(seqplus[i]-seqminus[i])/dw;
+        seq2[i]=(seqplus[i]+seqminus[i]-2*seq[i])/dwp/dwm;
+      };
+      for (i=0;i<len;++i) {
+        seq2[i]=seq2[i]*2*xparam*2*xparam+seq1[i]*2;
+        seq1[i]=seq1[i]*2*xparam;
       };
     } else {
       mpfr_20 h=1e-4;
@@ -2534,11 +3427,23 @@ std::vector<double> optim_param_const_m(double current_param, double lower_param
   int iter=0;
   double new_param,new_U,new_J,new_loglik,current_U=0,current_J,current_loglik,lower_U,lower_J,lower_loglik,upper_U,upper_J,upper_loglik;
   
+  if (current_param < 1e-1) {
+    current_param=1e-1;
+    lower_param=1e-2;
+    upper_param=1.;
+  } 
+  
+  if (option=="lag") {upper_param=std::min(upper_param,sqrt(50));};
   derivatives_param(upper_U, upper_J, upper_loglik, m, e, upper_param, data, len, option);
   if(!std::isfinite(upper_U) || !std::isfinite(upper_J) || !std::isfinite(upper_loglik)) {derivatives_param_boost(upper_U, upper_J, upper_loglik, m, e, upper_param, data, len, option);};
+  // Rcout << "m: " << m << "\n";
+  // Rcout << "upper_param: " << upper_param << "\n";
+  // Rcout << " upper_U: " << upper_U << " upper_J: " << upper_J << " upper_loglik: " << upper_loglik << "\n";
   
   derivatives_param(lower_U, lower_J, lower_loglik, m, e, lower_param, data, len, option);
   if(!std::isfinite(lower_U) || !std::isfinite(lower_J) || !std::isfinite(lower_loglik)) {derivatives_param_boost(lower_U, lower_J, lower_loglik, m, e, lower_param, data, len, option);};
+  // Rcout << "lower_param: " << lower_param << "\n";
+  // Rcout << " lower_U: " << lower_U << " lower_J: " << lower_J << " lower_loglik: " << lower_loglik << "\n";
   
   if(std::abs(upper_U)<1e-9){
     current_param = upper_param;
@@ -2552,7 +3457,7 @@ std::vector<double> optim_param_const_m(double current_param, double lower_param
   
   while(upper_U>0 && exit==false){
     lower_param=upper_param;lower_U=upper_U;lower_J=upper_J;lower_loglik=upper_loglik;
-    upper_param *= 2.25;
+    upper_param *= 1.4;
     derivatives_param(upper_U, upper_J, upper_loglik, m, e, upper_param, data, len, option);
     if(!std::isfinite(upper_U) || !std::isfinite(upper_J) || !std::isfinite(upper_loglik)) {derivatives_param_boost(upper_U, upper_J, upper_loglik, m, e, upper_param, data, len, option);};
     if(std::abs(upper_U) < 1e-9 && exit==false){
@@ -2570,15 +3475,21 @@ std::vector<double> optim_param_const_m(double current_param, double lower_param
       exit = true;
     };
   };
-  
+  // Rcout << "upper_param: " << upper_param << "\n";
+  // Rcout << " upper_U: " << upper_U << " upper_J: " << upper_J << " upper_loglik: " << upper_loglik << "\n";
+  // Rcout << "lower_param: " << lower_param << "\n";
+  // Rcout << " lower_U: " << lower_U << " lower_J: " << lower_J << " lower_loglik: " << lower_loglik << "\n";
   
   if (exit==false) {
     if ((current_param<lower_param) || (current_param>upper_param)) {current_param=(lower_param+upper_param)/2;};
+    // Rcout << "current_param: " << current_param << "\n";
     
     derivatives_param(current_U, current_J, current_loglik, m, e, current_param, data, len, option);
     if(!std::isfinite(current_U) || !std::isfinite(current_J) || !std::isfinite(current_loglik)) {derivatives_param_boost(current_U, current_J, current_loglik, m, e, current_param, data, len, option);};
+    // Rcout << " current_U: " << current_U << " current_J: " << current_J << " current_loglik: " << current_loglik << "\n";
     
     if ((!std::isfinite(current_U)) || (!std::isfinite(current_J)) || (!std::isfinite(current_loglik))) {
+      // Rcout << "infinite current \n";
       current_param = -1.0;
       exit = true;
     };
@@ -2587,6 +3498,7 @@ std::vector<double> optim_param_const_m(double current_param, double lower_param
   while(std::abs(current_U)>1.0e-9 && exit==false){
     iter++;
     if (iter>50) {
+      // Rcout << "maxiter \n";
       current_param = -1.0;
       exit = true;  
     };
@@ -2600,6 +3512,7 @@ std::vector<double> optim_param_const_m(double current_param, double lower_param
     derivatives_param(new_U, new_J, new_loglik, m, e, new_param, data, len, option);
     if(!std::isfinite(new_U) || !std::isfinite(new_J) || !std::isfinite(new_loglik)) {derivatives_param_boost(new_U, new_J, new_loglik, m, e, new_param, data, len, option);};
     if(!std::isfinite(new_U) || !std::isfinite(new_J) || !std::isfinite(new_loglik)) {
+      // Rcout << "infinite new \n";
       current_param = -1.0;
       exit = true;  
     };
@@ -2662,7 +3575,9 @@ void decompose(double &J_11, double &J_12, double &J_22, double &delta) {
   double first_J_11, first_J_12, first_J_21, first_J_22;
   double second_J_11, second_J_12, second_J_21, second_J_22;
   eigenvalue(eigen1, eigen2, J_11, J_12, J_22);
+  // Rcout << eigen1 << " " << eigen2 << "\n";
   eigenvector(eigen11, eigen12, eigen21, eigen22, J_11, J_12, J_22);
+  // Rcout << eigen11 << " " << eigen12 << " " << eigen21 << " " << eigen22 << "\n";
   if (std::abs(eigen1) < delta) {
     eigen1=delta;
   } else {
@@ -2682,7 +3597,7 @@ void decompose(double &J_11, double &J_12, double &J_22, double &delta) {
   second_J_12=-first_J_11*invdet*eigen12+first_J_12*eigen11*invdet;
   second_J_21=first_J_21*invdet*eigen11-first_J_22*eigen21*invdet;
   second_J_22=-first_J_21*invdet*eigen12+first_J_22*eigen11*invdet;
-
+  // Rcout << second_J_11 << " " << second_J_12 << " " << second_J_21 << " " << second_J_22 << "\n";
   J_11=second_J_11;
   J_12=second_J_12;
   J_22=second_J_22;
@@ -2699,14 +3614,23 @@ std::vector<double> optim_m_param_joint(double current_m, double lower_m, double
   double eigen1, eigen2;
   double delta_m, delta_param;
   int iter=0;
+  bool bisec=false;
   
   if (verbose) {Rcout << "***HYBRID BISECTION ALGORITHM***\n";};
   
+  // auto start = std::chrono::high_resolution_clock::now();
   upper=optim_m_const_param(upper_m, upper_m/2, upper_m*2, e, upper_param, len, data, option);
   upper_m=upper[0]; upper_U1=upper[1]; upper_U2=upper[2]; upper_J11=upper[3]; upper_J12=upper[4]; upper_J22=upper[5]; upper_loglik=upper[6];
+  // auto stop = std::chrono::high_resolution_clock::now();
+  // auto duration = std::chrono::duration_cast<std::chrono::seconds>(stop - start);
+  // Rcout << duration.count() << std::endl;
   
+  // start = std::chrono::high_resolution_clock::now();
   lower=optim_m_const_param(lower_m, lower_m/2, lower_m*2, e, lower_param, len, data, option);
   lower_m=lower[0]; lower_U1=lower[1]; lower_U2=lower[2]; lower_J11=lower[3]; lower_J12=lower[4]; lower_J22=lower[5]; lower_loglik=lower[6];
+  // stop = std::chrono::high_resolution_clock::now();
+  // duration = std::chrono::duration_cast<std::chrono::seconds>(stop - start);
+  // Rcout << duration.count() << std::endl;
   
   if (verbose) {Rcout << "upper_m: " << upper_m << " upper_param: " << upper_param << " upper_U1: " << upper_U1 << " upper_U2: " << upper_U2 << " upper_J11: " << upper_J11 << " upper_J12: " << upper_J12 << " upper_J22: " << upper_J22 << " upper_loglik: " << upper_loglik << "\n";};
   if (verbose) {Rcout << "lower_m: " << lower_m << " lower_param: " << lower_param << " lower_U1: " << lower_U1 << " lower_U2: " << lower_U2 << " lower_J11: " << lower_J11 << " lower_J12: " << lower_J12 << " lower_J22: " << lower_J22 << " lower_loglik: " << lower_loglik << "\n";};
@@ -2746,6 +3670,7 @@ std::vector<double> optim_m_param_joint(double current_m, double lower_m, double
     lower_m=lower[0]; lower_U1=lower[1]; lower_U2=lower[2]; lower_J11=lower[3]; lower_J12=lower[4]; lower_J22=lower[5]; lower_loglik=lower[6];
     if (verbose) {Rcout << "boundaries were readjusted\n" << "lower_m: " << lower_m << " lower_param: " << lower_param << " lower_U1: " << lower_U1 << " lower_U2: " << lower_U2 << " lower_J11: " << lower_J11 << " lower_J12: " << lower_J12 << " lower_J22: " << lower_J22 << " lower_loglik: " << lower_loglik << "\n";};
     if (lower_param < 1e-6){
+      // lower_param=0;
       return std::vector<double> {lower_m*lower_m, lower_param*lower_param, lower_U1, lower_U2, lower_J11, lower_J12, lower_J22, lower_loglik};
     };
     if(std::abs(sqrt(lower_U1 * lower_U1 + lower_U2 * lower_U2)) < 1e-6){
@@ -2761,7 +3686,7 @@ std::vector<double> optim_m_param_joint(double current_m, double lower_m, double
   if (verbose) {Rcout << "upper_m: " << upper_m << " upper_param: " << upper_param << " upper_U1: " << upper_U1 << " upper_U2: " << upper_U2 << " upper_J11: " << upper_J11 << " upper_J12: " << upper_J12 << " upper_J22: " << upper_J22 << " upper_loglik: " << upper_loglik << "\n";};
   if (verbose) {Rcout << "lower_m: " << lower_m << " lower_param: " << lower_param << " lower_U1: " << lower_U1 << " lower_U2: " << lower_U2 << " lower_J11: " << lower_J11 << " lower_J12: " << lower_J12 << " lower_J22: " << lower_J22 << " lower_loglik: " << lower_loglik << "\n";};
   
-  if (lower_U1 < 1e-3 && upper_U1 < 1e-3 && lower_U2 < 1e-3 && upper_U2 < 1e-3 && std::abs(upper_loglik-lower_loglik) < 1e-3) {
+  if (std::abs(lower_U1) < 5e-3 && std::abs(upper_U1) < 5e-3 && std::abs(lower_U2) < 5e-3 && std::abs(upper_U2) < 5e-3 && std::abs(upper_loglik-lower_loglik) < 1e-3) {
     if (verbose) {Rcout << "param value might be 0\n";};
     current_param = 1e-10;
     current=optim_m_const_param(current_m, current_m/2, current_m*2, e, current_param, len, data, option);
@@ -2771,6 +3696,11 @@ std::vector<double> optim_m_param_joint(double current_m, double lower_m, double
       return std::vector<double> {current_m*current_m, current_param*current_param, current_U1, current_U2, current_J11, current_J12, current_J22, current_loglik};
     };
   };
+  // Rprintf("loglik diff %f \n", std::abs(upper_loglik-lower_loglik));
+  // Rprintf("lower_loglik %f \n", lower_loglik);
+  // Rprintf("upper_loglik %f \n", upper_loglik);
+  // Rprintf("lower_m %f \n", lower_m);
+  // Rprintf("upper_m %f \n", upper_m);
   
   if (current_param<lower_param || current_param>upper_param){
     current_param=(lower_param+upper_param)/2;
@@ -2782,18 +3712,20 @@ std::vector<double> optim_m_param_joint(double current_m, double lower_m, double
   };
   if (verbose) {Rcout << "current_m: " << current_m << " current_param: " << current_param << " current_U1: " << current_U1 << " current_U2: " << current_U2 << " current_J11: " << current_J11 << " current_J12: " << current_J12 << " current_J22: " << current_J22 << " current_loglik: " << current_loglik << "\n";};
   
+  // while((std::abs(sqrt(current_U1 * current_U1 + current_U2 * current_U2)) > 1e-9) || (eigen1 < 0) || (eigen2 < 0)) {
   while(std::abs(sqrt(current_U1 * current_U1 + current_U2 * current_U2)) > 1e-6) {
     iter++;
     if (iter > 50) {return {-1.0};};
     
+    // if (verbose) {Rcout << "iter: " << iter << "\n";};
     if (verbose) {Rcout << std::endl << "Iteration " << iter << " with guesses m=" << current_m << " and parameter=" << current_param << "\n";};
     
     calc_deltas(current_U1, current_U2, current_J11, current_J12, current_J22, delta_m, delta_param);
     new_m=current_m+delta_m;
     new_param=current_param+delta_param;
     
-    if ((new_param < lower_param) || (new_param > upper_param) || (new_m < 0)) {
-      if (verbose) {Rcout << "Joint m and parameter: Bisection step" << "\n";}
+    if ((new_param < lower_param) || (new_param > upper_param) || (new_m < 0) || (bisec == true)) {
+      if (verbose) {Rcout << "Joint m and parameter: Bisection step between " << lower_param << " and " << upper_param << "\n";}
       for (int i=1; i<=2; ++i){
         new_param=(lower_param+upper_param)/2;
         current=optim_m_const_param(current_m, current_m/2, current_m*2, e, new_param, len, data, option);
@@ -2804,16 +3736,59 @@ std::vector<double> optim_m_param_joint(double current_m, double lower_m, double
           upper_m=new_m; upper_param=new_param; upper_U1=new_U1; upper_U2=new_U2; upper_J11=new_J11; upper_J12=new_J12; upper_J22=new_J22; upper_loglik=new_loglik;
         };
       }
+      if (verbose) {Rcout << "new_m: " << new_m << " new_param: " << new_param << " new_U1: " << new_U1 << " new_U2: " << new_U2 << " new_J11: " << new_J11 << " new_J12: " << new_J12 << " new_J22: " << new_J22 << " new_loglik: " << new_loglik << "\n";};
+      bisec=false;
     } else {
+      if (iter>1) {
+        if (new_U2 > 0 && new_U2 < upper_U2) {
+          lower_m=new_m; lower_param=new_param; lower_U1=new_U1; lower_U2=new_U2; lower_J11=new_J11; lower_J12=new_J12; lower_J22=new_J22; lower_loglik=new_loglik;
+        } else if (new_U2 < 0 && new_U2 > lower_U2) {
+          upper_m=new_m; upper_param=new_param; upper_U1=new_U1; upper_U2=new_U2; upper_J11=new_J11; upper_J12=new_J12; upper_J22=new_J22; upper_loglik=new_loglik;
+        };
+      };
       if (verbose) {Rcout << "Joint m and parameter: Newton step" << "\n";}
       derivatives_joint(new_U1, new_U2, new_J11, new_J12, new_J22, new_loglik, new_m, e, new_param, data, len, option);
       if ((!std::isfinite(new_U1)) || (!std::isfinite(new_U2)) || (!std::isfinite(new_J11)) || (!std::isfinite(new_J12)) || (!std::isfinite(new_J22)) || (!std::isfinite(new_loglik))) {
         derivatives_joint_boost(new_U1, new_U2, new_J11, new_J12, new_J22, new_loglik, new_m, e, new_param, data, len, option);
       };
+      if (verbose) {Rcout << "new_m: " << new_m << " new_param: " << new_param << " new_U1: " << new_U1 << " new_U2: " << new_U2 << " new_J11: " << new_J11 << " new_J12: " << new_J12 << " new_J22: " << new_J22 << " new_loglik: " << new_loglik << "\n";};
     };
     
-    eigenvalue(eigen1, eigen2, new_J11, new_J12, new_J22);
-    if (verbose) {Rcout << "Eigenvalues are " << eigen1 << " and " << eigen2 << "\n";};
+    if (std::abs(sqrt(new_U1 * new_U1 + new_U2 * new_U2)) < 1e-6) {
+      double eigen1, eigen2;
+      eigenvalue(eigen1, eigen2, new_J11, new_J12, new_J22);
+      if (verbose) {Rcout << "Joint m and parameter: eigenvalues: " << eigen1 << ", " << eigen2 << "\n";};
+      current_m=new_m; current_param=new_param; current_U1=new_U1; current_U2=new_U2; current_J11=new_J11; current_J12=new_J12; current_J22=new_J22; current_loglik=new_loglik;
+      break;
+    };
+    
+    if (new_loglik < current_loglik) {
+      if (verbose) {Rcout << "Joint m and parameter: new loglik is lower; skipping step" << "\n";}
+      bisec=true;
+      continue;
+    };
+    
+    // if (new_loglik < current_loglik) {
+    //   if (verbose) {Rcout << "bad loglik" << "\n";};
+    //   new_param=(lower_param+upper_param)/2;
+    //   current=optim_m_const_param(new_m, new_m/2, new_m*2, e, new_param, len, data, option);
+    //   new_m=current[0]; new_U1=current[1]; new_U2=current[2]; new_J11=current[3]; new_J12=current[4]; new_J22=current[5]; new_loglik=current[6];
+    //   if (new_U2 > 0) {
+    //     lower_m=new_m; lower_param=new_param; lower_U1=new_U1; lower_U2=new_U2; lower_J11=new_J11; lower_J12=new_J12; lower_J22=new_J22; lower_loglik=new_loglik;
+    //   } else if (new_U2 < 0) {
+    //     upper_m=new_m; upper_param=new_param; upper_U1=new_U1; upper_U2=new_U2; upper_J11=new_J11; upper_J12=new_J12; upper_J22=new_J22; upper_loglik=new_loglik;
+    //   };
+    // };
+    
+    // eigenvalue(eigen1, eigen2, new_J11, new_J12, new_J22);
+    // if (verbose) {Rcout << "Eigenvalues are " << eigen1 << " and " << eigen2 << "\n";};
+    // double delta=0.0005;
+    // if ((eigen1 < 0) || (eigen2 < 0)) {
+    //   decompose(current_J11, current_J12, current_J22, delta);
+    //   if (verbose) {Rcout << "Setting new Hessian: " << "current_J11: " << current_J11 << " current_J12: " << current_J12 << " current_J22: " << current_J22 << "\n";};
+    //   eigenvalue(eigen1, eigen2, current_J11, current_J12, current_J22);
+    //   if (verbose) {Rcout << "New eigenvalues are " << eigen1 << " and " << eigen2 << "\n";};
+    // };
     
     if (verbose) {Rcout << "Difference is " << std::abs(new_m-current_m)/current_m + std::abs(new_param-current_param)/current_param << "\n";};
     if (std::abs(new_m-current_m)/current_m + std::abs(new_param-current_param)/current_param < 1e-6) {
@@ -2892,6 +3867,74 @@ std::vector<double> optim_m_param_joint_2(double current_m, double current_param
   
 }
 
+// void loglik_joint(double &loglik, const double &m, const double &param, const double &e, std::vector<int> &data, const int &len, const std::string &option){
+//   int i,number;
+//   int samplesize=data.size();
+//   std::vector<double> prob(len);
+//   
+//   if ((option=="lag") || (option=="growth")) {
+//     std::vector<double> seq(len);
+//     
+//     if (option=="lag") {
+//       double L=pow(2,param*param);
+//       seq=aux_seq_lag(L,e,len-1);
+//     } else {
+//       seq=aux_seq_boost(e, param*param, len-1);
+//     };
+//     
+//     prob=prob_ld(m*m, seq, len);
+//   } else if (option=="mixed") {
+//     std::vector<double> auxseq(len),prob_lc(len),prob_p(len);
+//     auxseq=aux_seq(e, 1, len-1);
+//     prob_lc=prob_ld(m*m, auxseq, len);
+//     prob_p=prob_pois_2(param, len);
+//     
+//     prob=prob_ld_deriv(prob_lc, prob_p, len);
+//   };
+//   
+//   loglik=0;
+//   
+//   for(i=0;i<=samplesize-1;++i){
+//     number=data[i];
+//     loglik+=log(prob[number]);
+//   };
+// }
+// 
+// void loglik_joint_boost(double &loglik, const double &m, const double &param, const double &e, std::vector<int> &data, const int &len, const std::string &option){
+//   int i,number;
+//   int samplesize=data.size();
+//   std::vector<mpfr_20> prob(len);
+//   mpfr_20 xm=m, xe=e, xparam=param;
+//   mpfr_20 xloglik=0;
+//   
+//   if ((option=="lag") || (option=="growth")) {
+//     std::vector<mpfr_20> seq(len);
+//     
+//     if (option=="lag") {
+//       mpfr_20 L=pow(2,xparam*xparam);
+//       seq=aux_seq_lag(L,xe,len-1);
+//     } else {
+//       seq=aux_seq_boost(xe, xparam*xparam, len-1);
+//     };
+//     
+//     prob=prob_ld(xm*xm, seq, len);
+//   } else if (option=="mixed") {
+//     std::vector<mpfr_20> auxseq(len),prob_lc(len),prob_p(len);
+//     auxseq=aux_seq_boost(xe, 1, len-1);
+//     prob_lc=prob_ld(xm*xm, auxseq, len);
+//     prob_p=prob_pois_2(xparam, len);
+//     
+//     prob=prob_ld_deriv(prob_lc, prob_p, len);
+//   };
+//   
+//   for(i=0;i<=samplesize-1;++i){
+//     number=data[i];
+//     xloglik+=log(prob[number]);
+//   };
+//   
+//   loglik=static_cast<double>(xloglik);
+// }
+
 // [[Rcpp::export]]
 std::vector<double> root_m_param_joint(double current_m, double lower_m, double upper_m, double current_param, double lower_param, double upper_param,
                                        const double e, std::vector<int> &data, const int len, const double lalpha, const int &rootparam,
@@ -2904,6 +3947,7 @@ std::vector<double> root_m_param_joint(double current_m, double lower_m, double 
   double new_m, new_param, new_U1, new_U2, new_J11, new_J12, new_J22, new_loglik;
   int iter=0;
   int n=0;
+  bool bisec = false;
   
   switch(rootparam){
   case 1:
@@ -2915,8 +3959,8 @@ std::vector<double> root_m_param_joint(double current_m, double lower_m, double 
     break;
   case 0:
     if (verbose) {Rcout << "rootparam: " << 0 << "\n";}
-    upper=optim_param_const_m(upper_param, upper_param/2, upper_param*2, e, upper_m, len, data, option);
-    lower=optim_param_const_m(lower_param, lower_param/2, lower_param*2, e, lower_m, len, data, option);
+    upper=optim_param_const_m(upper_param, upper_param/2, upper_param*1.4, e, upper_m, len, data, option);
+    lower=optim_param_const_m(lower_param, lower_param/2, lower_param*1.4, e, lower_m, len, data, option);
     upper_param=upper[0]; upper_U1=upper[1]; upper_U2=upper[2]; upper_J11=upper[3]; upper_J12=upper[4]; upper_J22=upper[5]; upper_loglik=upper[6]-lalpha;
     lower_param=lower[0]; lower_U1=lower[1]; lower_U2=lower[2]; lower_J11=lower[3]; lower_J12=lower[4]; lower_J22=lower[5]; lower_loglik=lower[6]-lalpha;
     break;
@@ -2924,7 +3968,7 @@ std::vector<double> root_m_param_joint(double current_m, double lower_m, double 
   
   if (verbose) {Rcout << "upper_m: " << upper_m << " upper_param: " << upper_param << " upper_U1: " << upper_U1 << " upper_U2: " << upper_U2 << " upper_J11: " << upper_J11 << " upper_J12: " << upper_J12 << " upper_J22: " << upper_J22 << " upper_loglik: " << upper_loglik << "\n";};
   if (verbose) {Rcout << "lower_m: " << lower_m << " lower_param: " << lower_param << " lower_U1: " << lower_U1 << " lower_U2: " << lower_U2 << " lower_J11: " << lower_J11 << " lower_J12: " << lower_J12 << " lower_J22: " << lower_J22 << " lower_loglik: " << lower_loglik << "\n";};
-  
+  // return(std::vector<double>{-1.0});
   if (std::abs(lower_loglik) < 1e-6) {return std::vector<double>{lower_m*lower_m, lower_param*lower_param, lower_U1, lower_U2, lower_J11, lower_J12, lower_J22, lower_loglik};};
   if (std::abs(upper_loglik) < 1e-6) {return std::vector<double>{upper_m*upper_m, upper_param*upper_param, upper_U1, upper_U2, upper_J11, upper_J12, upper_J22, upper_loglik};};
   
@@ -2941,15 +3985,16 @@ std::vector<double> root_m_param_joint(double current_m, double lower_m, double 
           lower_param /= 3;
           lower=optim_m_const_param(lower_m, lower_m/2, lower_m*2, e, lower_param, len, data, option);
           lower_m=lower[0]; lower_U1=lower[1]; lower_U2=lower[2]; lower_J11=lower[3]; lower_J12=lower[4]; lower_J22=lower[5]; lower_loglik=lower[6]-lalpha;
+          if (lower_param < 1e-6) {return std::vector<double>{lower_m*lower_m, lower_param*lower_param, lower_U1, lower_U2, lower_J11, lower_J12, lower_J22, lower_loglik};};
           break;
         case 0:
           lower_m /= 3;
           lower=optim_param_const_m(lower_param, lower_param/2, lower_param*2, e, lower_m, len, data, option);
           lower_param=lower[0]; lower_U1=lower[1]; lower_U2=lower[2]; lower_J11=lower[3]; lower_J12=lower[4]; lower_J22=lower[5]; lower_loglik=lower[6]-lalpha;
+          if (lower_m < 1e-6) {return std::vector<double>{lower_m*lower_m, lower_param*lower_param, lower_U1, lower_U2, lower_J11, lower_J12, lower_J22, lower_loglik};};
           break;
         };
         if (verbose) {Rcout << "boundaries were readjusted\n" << "lower_m: " << lower_m << " lower_param: " << lower_param << " lower_U1: " << lower_U1 << " lower_U2: " << lower_U2 << " lower_J11: " << lower_J11 << " lower_J12: " << lower_J12 << " lower_J22: " << lower_J22 << " lower_loglik: " << lower_loglik << "\n";};
-        if (lower_m < 1e-6) {return std::vector<double>{lower_m*lower_m, lower_param*lower_param, lower_U1, lower_U2, lower_J11, lower_J12, lower_J22, lower_loglik};};
         
       };
       break;
@@ -2976,13 +4021,62 @@ std::vector<double> root_m_param_joint(double current_m, double lower_m, double 
         
       };
       break;
-    };
+    }
+    // if (upper_loglik<lower_loglik){
+    //   int n=0;
+    //   while(upper_loglik > 0){
+    //     n++;
+    //     if (n > 100) {return std::vector<double>{-1};}
+    //     lower_m=upper_m; lower_param=upper_param; lower_U1=upper_U1; lower_U2=upper_U2; lower_J11=upper_J11; lower_J12=upper_J12; lower_J22=upper_J22; lower_loglik=upper_loglik;
+    //     
+    //     switch(rootparam){
+    //     case 1:
+    //       upper_param *= 2.25;
+    //       upper=optim_m_const_param(upper_m, upper_m/2, upper_m*2, e, upper_param, len, data, option);
+    //       upper_m=upper[0]; upper_U1=upper[1]; upper_U2=upper[2]; upper_J11=upper[3]; upper_J12=upper[4]; upper_J22=upper[5]; upper_loglik=upper[6]-lalpha;
+    //     case 0:
+    //       upper_m *= 2.25;
+    //       upper=optim_param_const_m(upper_param, upper_param/2, upper_param*2, e, upper_m, len, data, option);
+    //       upper_param=upper[0]; upper_U1=upper[1]; upper_U2=upper[2]; upper_J11=upper[3]; upper_J12=upper[4]; upper_J22=upper[5]; upper_loglik=upper[6]-lalpha;
+    //     };
+    //     
+    //   };
+    // } else {
+    //   int n=0;
+    //   while(lower_loglik > 0){
+    //     n++;
+    //     if (n > 100) {return std::vector<double>{-1};}
+    //     upper_m=lower_m; upper_param=lower_param; upper_U1=lower_U1; upper_U2=lower_U2; upper_J11=lower_J11; upper_J12=lower_J12; upper_J22=lower_J22; upper_loglik=lower_loglik;
+    //     
+    //     switch(rootparam){
+    //     case 1:
+    //       lower_param /= 3;
+    //       lower=optim_m_const_param(lower_m, lower_m/2, lower_m*2, e, lower_param, len, data, option);
+    //       lower_m=lower[0]; lower_U1=lower[1]; lower_U2=lower[2]; lower_J11=lower[3]; lower_J12=lower[4]; lower_J22=lower[5]; lower_loglik=lower[6]-lalpha;
+    //       if (lower_param < 1e-6) {return std::vector<double>{lower_m, lower_param, lower_U1, lower_U2, lower_J11, lower_J12, lower_J22, lower_loglik};};
+    //     case 0:
+    //       lower_m /= 3;
+    //       lower=optim_param_const_m(lower_param, lower_param/2, lower_param*2, e, lower_m, len, data, option);
+    //       lower_param=lower[0]; lower_U1=lower[1]; lower_U2=lower[2]; lower_J11=lower[3]; lower_J12=lower[4]; lower_J22=lower[5]; lower_loglik=lower[6]-lalpha;
+    //       if (lower_m < 1e-6) {return std::vector<double>{lower_param, lower_m, lower_U1, lower_U2, lower_J11, lower_J12, lower_J22, lower_loglik};};
+    //     };
+    //     
+    //   };
+    // };
   };
   
   if (std::abs(lower_loglik) < 1e-6) {return std::vector<double>{lower_m, lower_param, lower_U1, lower_U2, lower_J11, lower_J12, lower_J22, lower_loglik};};
   if (std::abs(upper_loglik) < 1e-6) {return std::vector<double>{upper_m, upper_param, upper_U1, upper_U2, upper_J11, upper_J12, upper_J22, upper_loglik};};
   
-  if (verbose) {Rcout << "Set parameter bounds to " << lower_param << " and " << upper_param << "\n";};
+  switch(rootparam){
+  case 1:
+    if (verbose) {Rcout << "Set parameter bounds to " << lower_param << " and " << upper_param << "\n";};
+    break;
+  case 0:
+    if (verbose) {Rcout << "Set m bounds to " << lower_m << " and " << upper_m << "\n";};
+    break;
+  };
+  
   if (verbose) {Rcout << "Boundary log-likelihood: " << lower_loglik << " " << upper_loglik << "\n";};
   
   if (verbose) {Rcout << "upper_m: " << upper_m << " upper_param: " << upper_param << " upper_U1: " << upper_U1 << " upper_U2: " << upper_U2 << " upper_J11: " << upper_J11 << " upper_J12: " << upper_J12 << " upper_J22: " << upper_J22 << " upper_loglik: " << upper_loglik << "\n";};
@@ -3020,7 +4114,7 @@ std::vector<double> root_m_param_joint(double current_m, double lower_m, double 
       break;
     };
     
-    if((((new_m<lower_m) || (new_m>upper_m)) && rootparam==0) || (((new_param<lower_param) || (new_param>upper_param)) && rootparam==1)){
+    if((((new_m<lower_m) || (new_m>upper_m)) && rootparam==0) || (((new_param<lower_param) || (new_param>upper_param)) && rootparam==1) || bisec){
       
       switch(rootparam){
       case 1:
@@ -3059,6 +4153,17 @@ std::vector<double> root_m_param_joint(double current_m, double lower_m, double 
         upper_loglik=new_loglik;
       };
       
+      switch(rootparam){
+      case 1:
+        if(verbose) {Rcout << "lower_param: " << lower_param << " upper_param: " << upper_param << "\n";};
+        break;
+      case 0:
+        if(verbose) {Rcout << "lower_m: " << lower_m << " upper_m: " << upper_m << "\n";};
+        break;
+      };
+      
+      bisec = false;
+      
     } else {
       
       switch(rootparam){
@@ -3072,7 +4177,41 @@ std::vector<double> root_m_param_joint(double current_m, double lower_m, double 
         break;
       };
       
+      if (((lower_loglik<upper_loglik) && (new_loglik<0)) || ((lower_loglik>upper_loglik) && (new_loglik>0))) {
+        switch(rootparam){
+        case 1:
+          lower_param=new_param;
+          break;
+        case 0:
+          lower_m=new_m;
+          break;
+        };
+        lower_loglik=new_loglik;
+      } else if (((lower_loglik<upper_loglik) && (new_loglik>0)) || ((lower_loglik>upper_loglik) && (new_loglik<0))) {
+        switch(rootparam){
+        case 1:
+          upper_param=new_param;
+          break;
+        case 0:
+          upper_m=new_m;
+          break;
+        };       
+        upper_loglik=new_loglik;
+      };
+      
     };
+    
+    if ((abs(new_loglik) > abs(current_loglik))) {
+      bisec = true;
+    }
+    
+    // derivatives(new_U, new_J, new_loglik, new_m, seq, len, data, k, poisson);
+    // if ((!std::isfinite(new_U)) || (!std::isfinite(new_J)) || (!std::isfinite(new_loglik))) {derivatives_boost(new_U, new_J, new_loglik, new_m, seq, len, data, k, poisson);};
+    // new_loglik-=lalpha;
+    
+    // if(verbose) {Rcout << "U: " << new_U << " J: " << new_J << " loglik: " << new_loglik << "\n";};
+    
+    // if ((!std::isfinite(new_U)) || (!std::isfinite(new_J)) || (!std::isfinite(new_loglik))) {return -1.0;};
     
     current_m=new_m; current_param=new_param; current_U1=new_U1; current_U2=new_U2; current_J11=new_J11; current_J12=new_J12; current_J22=new_J22; current_loglik=new_loglik;
     if (verbose) {Rcout << "current_m: " << current_m << " current_param: " << current_param << " current_U1: " << current_U1 << " current_U2: " << current_U2 << " current_J11: " << current_J11 << " current_J12: " << current_J12 << " current_J22: " << current_J22 << " current_loglik: " << current_loglik << "\n";};
@@ -3161,14 +4300,28 @@ std::vector<double> fisher_info(const double sqrtm, const double sqrtparam, cons
     std::vector<double> seq(len),seq1(len);
     
     if (option=="lag") {
-      double L=pow(2,sqrtparam*sqrtparam);
-      double log2=0.693147180559945;
-      double dLdparam=L*log2*2*sqrtparam;
-      seq=aux_seq_lag(L,e,len-1);
-      seq1=aux_seq_lag_deriv1(L,e,len-1);
+      // double L=pow(2,sqrtparam*sqrtparam);
+      // double log2=0.693147180559945;
+      // double dLdparam=L*log2*2*sqrtparam;
+      // seq=aux_seq_lag(L,e,len-1);
+      // seq1=aux_seq_lag_deriv1(L,e,len-1);
+      // for (i=0;i<len;++i) {
+      //   seq1[i]=seq1[i]*dLdparam;
+      // }; // derivatives with respect to a (number of generations of lag)
+      double h=1e-4;
+      std::vector<double> seqplus(len), seqminus(len);
+      volatile double whp=sqrtparam*sqrtparam*(1.0+h);
+      volatile double whm=sqrtparam*sqrtparam*(1.0-h);
+      double dw=whp-whm;
+      seq=aux_seq_lag_s(e, sqrtparam*sqrtparam, len-1);
+      seqplus=aux_seq_lag_s(e, whp, len-1);
+      seqminus=aux_seq_lag_s(e, whm, len-1);
       for (i=0;i<len;++i) {
-        seq1[i]=seq1[i]*dLdparam;
-      }; // derivatives with respect to a (number of generations of lag)
+        seq1[i]=(seqplus[i]-seqminus[i])/dw;
+      };
+      for (i=0;i<len;++i) {
+        seq1[i]=seq1[i]*2*sqrtparam;
+      };
     } else {
       double h=1e-4;
       std::vector<double> seqplus(len), seqminus(len);

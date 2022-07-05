@@ -11,8 +11,8 @@ Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
 // rluria_list
-Rcpp::List rluria_list(const int n, const double rate, const double N0, const double Nt, const double mut_fit, const int type, const double wt_dp, const double mut_dp, const double lag, const double e, const double cv, const int trim);
-RcppExport SEXP _mlemur_rluria_list(SEXP nSEXP, SEXP rateSEXP, SEXP N0SEXP, SEXP NtSEXP, SEXP mut_fitSEXP, SEXP typeSEXP, SEXP wt_dpSEXP, SEXP mut_dpSEXP, SEXP lagSEXP, SEXP eSEXP, SEXP cvSEXP, SEXP trimSEXP) {
+Rcpp::List rluria_list(const int n, const double rate, const double N0, const double Nt, const double mut_fit, const double death_prob, const double lag, const double e, const double cv, const int trim);
+RcppExport SEXP _mlemur_rluria_list(SEXP nSEXP, SEXP rateSEXP, SEXP N0SEXP, SEXP NtSEXP, SEXP mut_fitSEXP, SEXP death_probSEXP, SEXP lagSEXP, SEXP eSEXP, SEXP cvSEXP, SEXP trimSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -21,20 +21,18 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const double >::type N0(N0SEXP);
     Rcpp::traits::input_parameter< const double >::type Nt(NtSEXP);
     Rcpp::traits::input_parameter< const double >::type mut_fit(mut_fitSEXP);
-    Rcpp::traits::input_parameter< const int >::type type(typeSEXP);
-    Rcpp::traits::input_parameter< const double >::type wt_dp(wt_dpSEXP);
-    Rcpp::traits::input_parameter< const double >::type mut_dp(mut_dpSEXP);
+    Rcpp::traits::input_parameter< const double >::type death_prob(death_probSEXP);
     Rcpp::traits::input_parameter< const double >::type lag(lagSEXP);
     Rcpp::traits::input_parameter< const double >::type e(eSEXP);
     Rcpp::traits::input_parameter< const double >::type cv(cvSEXP);
     Rcpp::traits::input_parameter< const int >::type trim(trimSEXP);
-    rcpp_result_gen = Rcpp::wrap(rluria_list(n, rate, N0, Nt, mut_fit, type, wt_dp, mut_dp, lag, e, cv, trim));
+    rcpp_result_gen = Rcpp::wrap(rluria_list(n, rate, N0, Nt, mut_fit, death_prob, lag, e, cv, trim));
     return rcpp_result_gen;
 END_RCPP
 }
 // rluria_vec
-NumericVector rluria_vec(const int n, const double rate, const double N0, const double Nt, const double mut_fit, const int type, const double wt_dp, const double mut_dp, const double lag, const double e, const double cv, const int trim);
-RcppExport SEXP _mlemur_rluria_vec(SEXP nSEXP, SEXP rateSEXP, SEXP N0SEXP, SEXP NtSEXP, SEXP mut_fitSEXP, SEXP typeSEXP, SEXP wt_dpSEXP, SEXP mut_dpSEXP, SEXP lagSEXP, SEXP eSEXP, SEXP cvSEXP, SEXP trimSEXP) {
+NumericVector rluria_vec(const int n, const double rate, const double N0, const double Nt, const double mut_fit, const double death_prob, const double lag, const double e, const double cv, const int trim);
+RcppExport SEXP _mlemur_rluria_vec(SEXP nSEXP, SEXP rateSEXP, SEXP N0SEXP, SEXP NtSEXP, SEXP mut_fitSEXP, SEXP death_probSEXP, SEXP lagSEXP, SEXP eSEXP, SEXP cvSEXP, SEXP trimSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -43,14 +41,28 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const double >::type N0(N0SEXP);
     Rcpp::traits::input_parameter< const double >::type Nt(NtSEXP);
     Rcpp::traits::input_parameter< const double >::type mut_fit(mut_fitSEXP);
-    Rcpp::traits::input_parameter< const int >::type type(typeSEXP);
-    Rcpp::traits::input_parameter< const double >::type wt_dp(wt_dpSEXP);
-    Rcpp::traits::input_parameter< const double >::type mut_dp(mut_dpSEXP);
+    Rcpp::traits::input_parameter< const double >::type death_prob(death_probSEXP);
     Rcpp::traits::input_parameter< const double >::type lag(lagSEXP);
     Rcpp::traits::input_parameter< const double >::type e(eSEXP);
     Rcpp::traits::input_parameter< const double >::type cv(cvSEXP);
     Rcpp::traits::input_parameter< const int >::type trim(trimSEXP);
-    rcpp_result_gen = Rcpp::wrap(rluria_vec(n, rate, N0, Nt, mut_fit, type, wt_dp, mut_dp, lag, e, cv, trim));
+    rcpp_result_gen = Rcpp::wrap(rluria_vec(n, rate, N0, Nt, mut_fit, death_prob, lag, e, cv, trim));
+    return rcpp_result_gen;
+END_RCPP
+}
+// aux_seq_integrate_s
+std::vector<double> aux_seq_integrate_s(double e, double w, double d, double lag, double phi, int n);
+RcppExport SEXP _mlemur_aux_seq_integrate_s(SEXP eSEXP, SEXP wSEXP, SEXP dSEXP, SEXP lagSEXP, SEXP phiSEXP, SEXP nSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< double >::type e(eSEXP);
+    Rcpp::traits::input_parameter< double >::type w(wSEXP);
+    Rcpp::traits::input_parameter< double >::type d(dSEXP);
+    Rcpp::traits::input_parameter< double >::type lag(lagSEXP);
+    Rcpp::traits::input_parameter< double >::type phi(phiSEXP);
+    Rcpp::traits::input_parameter< int >::type n(nSEXP);
+    rcpp_result_gen = Rcpp::wrap(aux_seq_integrate_s(e, w, d, lag, phi, n));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -111,6 +123,59 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< bool >::type boost(boostSEXP);
     Rcpp::traits::input_parameter< int >::type deriv(derivSEXP);
     rcpp_result_gen = Rcpp::wrap(aux_seq_lag_ext(L, e, n, boost, deriv));
+    return rcpp_result_gen;
+END_RCPP
+}
+// aux_seq_lag_s
+std::vector<double> aux_seq_lag_s(double e, double lag, int n);
+RcppExport SEXP _mlemur_aux_seq_lag_s(SEXP eSEXP, SEXP lagSEXP, SEXP nSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< double >::type e(eSEXP);
+    Rcpp::traits::input_parameter< double >::type lag(lagSEXP);
+    Rcpp::traits::input_parameter< int >::type n(nSEXP);
+    rcpp_result_gen = Rcpp::wrap(aux_seq_lag_s(e, lag, n));
+    return rcpp_result_gen;
+END_RCPP
+}
+// aux_seq_lag_s_deriv1
+std::vector<double> aux_seq_lag_s_deriv1(double e, double lag, int n);
+RcppExport SEXP _mlemur_aux_seq_lag_s_deriv1(SEXP eSEXP, SEXP lagSEXP, SEXP nSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< double >::type e(eSEXP);
+    Rcpp::traits::input_parameter< double >::type lag(lagSEXP);
+    Rcpp::traits::input_parameter< int >::type n(nSEXP);
+    rcpp_result_gen = Rcpp::wrap(aux_seq_lag_s_deriv1(e, lag, n));
+    return rcpp_result_gen;
+END_RCPP
+}
+// aux_seq_lag_s_deriv2
+std::vector<double> aux_seq_lag_s_deriv2(double e, double lag, int n);
+RcppExport SEXP _mlemur_aux_seq_lag_s_deriv2(SEXP eSEXP, SEXP lagSEXP, SEXP nSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< double >::type e(eSEXP);
+    Rcpp::traits::input_parameter< double >::type lag(lagSEXP);
+    Rcpp::traits::input_parameter< int >::type n(nSEXP);
+    rcpp_result_gen = Rcpp::wrap(aux_seq_lag_s_deriv2(e, lag, n));
+    return rcpp_result_gen;
+END_RCPP
+}
+// aux_seq_lag_s_ext
+std::vector<double> aux_seq_lag_s_ext(double e, double lag, int n, bool boost);
+RcppExport SEXP _mlemur_aux_seq_lag_s_ext(SEXP eSEXP, SEXP lagSEXP, SEXP nSEXP, SEXP boostSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< double >::type e(eSEXP);
+    Rcpp::traits::input_parameter< double >::type lag(lagSEXP);
+    Rcpp::traits::input_parameter< int >::type n(nSEXP);
+    Rcpp::traits::input_parameter< bool >::type boost(boostSEXP);
+    rcpp_result_gen = Rcpp::wrap(aux_seq_lag_s_ext(e, lag, n, boost));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -413,12 +478,17 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_mlemur_rluria_list", (DL_FUNC) &_mlemur_rluria_list, 12},
-    {"_mlemur_rluria_vec", (DL_FUNC) &_mlemur_rluria_vec, 12},
+    {"_mlemur_rluria_list", (DL_FUNC) &_mlemur_rluria_list, 10},
+    {"_mlemur_rluria_vec", (DL_FUNC) &_mlemur_rluria_vec, 10},
+    {"_mlemur_aux_seq_integrate_s", (DL_FUNC) &_mlemur_aux_seq_integrate_s, 6},
     {"_mlemur_aux_seq_integrate", (DL_FUNC) &_mlemur_aux_seq_integrate, 6},
     {"_mlemur_aux_seq", (DL_FUNC) &_mlemur_aux_seq, 4},
     {"_mlemur_aux_seq_deriv1_deriv2", (DL_FUNC) &_mlemur_aux_seq_deriv1_deriv2, 5},
     {"_mlemur_aux_seq_lag_ext", (DL_FUNC) &_mlemur_aux_seq_lag_ext, 5},
+    {"_mlemur_aux_seq_lag_s", (DL_FUNC) &_mlemur_aux_seq_lag_s, 3},
+    {"_mlemur_aux_seq_lag_s_deriv1", (DL_FUNC) &_mlemur_aux_seq_lag_s_deriv1, 3},
+    {"_mlemur_aux_seq_lag_s_deriv2", (DL_FUNC) &_mlemur_aux_seq_lag_s_deriv2, 3},
+    {"_mlemur_aux_seq_lag_s_ext", (DL_FUNC) &_mlemur_aux_seq_lag_s_ext, 4},
     {"_mlemur_aux_seq_death_ext", (DL_FUNC) &_mlemur_aux_seq_death_ext, 5},
     {"_mlemur_prob_ld", (DL_FUNC) &_mlemur_prob_ld, 3},
     {"_mlemur_xi_seq", (DL_FUNC) &_mlemur_xi_seq, 3},
