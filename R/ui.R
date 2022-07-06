@@ -351,7 +351,7 @@ mlemurUI <- function(request) {
                                            div(class = "panel panel-info",
                                                div(class="panel-heading", h5(HTML("<font color = '#3a87ad'>mlemur tried to select the additional parameters based on your data. You can change your choice for each strain using checkboxes below:</font>"))),
                                                div(class="panel-body",
-                                                   style="padding-bottom: 0;",
+                                                   style="padding-bottom: 0; overflow-y: scroll;",
                                                    div(style = "display:block;vertical-align:top;width:100%;",
                                                        div(style = "display:inline-block;vertical-align:top;width:calc(100% - 390px);", HTML("")),
                                                        div(style = "display:inline-block;vertical-align:top;width:60px;text-align:center;height:40px;", HTML("Fitness")),

@@ -66,7 +66,7 @@ aux.seq <- function(e = 1, w = 1, death = 0, lag = 0, phi = 0, n = 10, integrate
       
     } else {
       
-      return(aux.seq(e = e, w = w, death = death, lag = lag, phi = phi, n = n, integrate = TRUE)/(1 - death/(1-death)))
+      return(aux.seq(e = e, w = w, death = death, lag = lag, phi = phi, n = n, integrate = TRUE))
       
     }
     
@@ -1952,7 +1952,7 @@ calc.pval.int <- function(datax, datay, Mx, My) {
   result <- tryCatch(lrt.mutations(datax = datax$CountsSelective, datay = datay$CountsSelective, ex = ex, ey = ey, 
                                    wx = datax$Fitness, wy = datay$Fitness,
                                    lagx = datax$Lag, lagy = datay$Lag, poissonx = datax$Residual, poissony = datay$Residual,
-                                   deathx = datax$Death, deathy = datay$Death, phix = datax$Inoculum/Ntx, phiy = datay$Inoculum/Nty,
+                                   deathx = datax$Death/(1 + datax$Death), deathy = datay$Death/(1 + datay$Death), phix = datax$Inoculum/Ntx, phiy = datay$Inoculum/Nty,
                                    cvx = cv0x, cvy = cv0y, Nx = Ntx, Ny = Nty, Mx = Mx, My = My, verbose = F),
                      error=function(err) {c(NA)})
   

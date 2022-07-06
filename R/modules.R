@@ -55,7 +55,7 @@ countsPlatingUI <- function(id, currentTab, stack_cols=FALSE, usePreset) {
           shinyWidgets::awesomeRadio(
             inputId = ns("useLagFitness"),
             label = HTML(paste("Specify phenotypic lag or fitness:", infoTooltip("Choose whether you want to input phenotypic lag or mutant fitness."))),
-            choices = c("Don't use" = 0, "Specify phenotypic lag" = 1, "Specify mutant fitnes" = 2),
+            choices = c("Don't use" = 0, "Specify phenotypic lag" = 1, "Specify mutant fitness" = 2),
             selected = 0,
             inline = TRUE
           )

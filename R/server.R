@@ -38,7 +38,7 @@ mlemurServer <- function(input, output, session) {
   
   #### Rate Copy to Clipboard ####
   observeEvent(input$clip, {
-    clipr::write_clip(paste(as.character(rv$RatetoClipboard), collapse = "\n"))
+    clipr::write_clip(paste(as.character(rv$RatetoClipboard), collapse = "\n"), allow_non_interactive = TRUE)
   })
   
   #### Rate Add to Report ####
@@ -188,7 +188,7 @@ mlemurServer <- function(input, output, session) {
   
   #### Corrector Clipboard ####
   observeEvent(input$clip2, {
-    clipr::write_clip(paste(as.character(rv$PvaltoClipboard), collapse = "\n"))
+    clipr::write_clip(paste(as.character(rv$PvaltoClipboard), collapse = "\n"), allow_non_interactive = TRUE)
   })
   
   #### Corrector Eraser ####
@@ -523,8 +523,7 @@ mlemurServer <- function(input, output, session) {
     rv$PlatingList <- removeParameters(rv$PlatingList, rv$FinalSettings)
     
     DataRate <- lapply(rv$PlatingList, calc.rate.int)
-    filetosave <- rv$PlatingList
-    save(filetosave, file = "latest.RData")
+    
     NoOfMutations <- as.numeric(lapply(DataRate, function(x) {x[15]}))
     DataRate <- as.data.frame(lapply(DataRate, function(x) {x[-15]}), check.names = FALSE)
     
