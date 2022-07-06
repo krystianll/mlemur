@@ -2,7 +2,6 @@ mlemurUI <- function(request) {
   fluidPage(
     shinyjs::useShinyjs(),
     shinyFeedback::useShinyFeedback(),
-    rclipboard::rclipboardSetup(),
     tags$head(
       tags$link(rel= "stylesheet", type = "text/css", href = "www/bootstrap.css"),
       tags$script(src = "www/javascript.js"),
