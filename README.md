@@ -16,7 +16,7 @@ install.packages(c("devtools", "Rcpp", "reactable", "readxl", "writexl", "shiny"
 ```
 You might be asked to confirm by clicking 'Yes' or to select server from which the packages will be downloaded - select the first one
 
-4. In the R main window, select Packages in the menu bar at the top of the window and then "Install package(s) from local zip files"
+4. In the R main window, select "Packages" in the menu bar at the top of the window and then "Install package(s) from local zip files"
 
 5. In the new window, locate the downloaded zip file and click Open
 ### Installation using source files (requires compilation)
@@ -53,7 +53,8 @@ Alternatively, you can download the following clickable script: https://github.c
 xcode-select --install
 ```
 Then follow the instructions in the new window.
-5. Proceed to the next part. You can either follow instruction for installing the pre-compiled binary or compiling from the source file.
+
+4. Proceed to the next part. You can either follow instruction for installing the pre-compiled binary or compiling from the source file.
 ### Installation using pre-compiled binary
 1. Locate and run R.app
 
@@ -63,21 +64,22 @@ Then follow the instructions in the new window.
 - If you're not sure which version to choose, inspect the text in R main window:
 - Platform: aarch64-apple-darwinXX (64-bit) (with XX some number) means you should download the arm version
 - Platform: x86_64-apple-darwinXX (64-bit) (with XX some number) means you should download the intel version
-Make sure that the file has .tgz extension! If it is saved as .tar, please change the extension by hand.
+
+**Make sure that the file has .tgz extension! If it is saved as .tar, please change the extension by hand.**
 
 3. In the R main window, install required packages: copy the following command to R console and press Enter:
 ```
 install.packages(c("devtools", "Rcpp", "reactable", "readxl", "writexl", "shiny", "shinyFeedback", "shinyWidgets", "shinyjs", "boot", "BH", "hypergeo", "Ryacas"), dependencies = TRUE)
 ```
-You might be asked to confirm by clicking 'Yes' or to select server from which the packages will be downloaded - select the first one
+You might be asked to confirm by clicking "Yes" or to select server from which the packages will be downloaded - select the first one
 
-4. In the R main window, select Packages & Data in the menu bar at the top of the window and then "Package Installer"
+4. In the R main window, select "Packages & Data" in the menu bar at the top of the window and then "Package Installer"
 
-5. In the top-left menu, in the Packages repository change CRAN (binaries) to Local Binary Package and then click Install in the bottom-right part of the window
+5. In the top-left menu, in the "Packages repository" section change CRAN (binaries) to Local Binary Package and then click Install in the bottom-right part of the window
 
-6. Locate the mlemur_0.9.tgz file and press open
+6. Locate the mlemur_0.9.tgz file and press Open
 
-Alternative 4-6. If the above doesn't work, in the R main window, select Mics in the menu bar at the top of the window and then "Change Working Directory…". Locate the folder containing mlemur_0.9.tgz file and press open. Then in the R console use the following command and press Enter:
+Alternative 4-6. If the above doesn't work, in the R main window, select "Misc" in the menu bar at the top of the window and then "Change Working Directory…". Locate the folder containing mlemur_0.9.tgz file and press Open. Then in the R console use the following command and press Enter:
 ```
 install.packages("mlemur_0.9.tgz")
 ```
@@ -98,13 +100,14 @@ brew install boost
 ```
 brew install mpfr
 ```
-5. Install `devtools` package: copy the following command to R console and press Enter:
+5. Locate and run R.app
+6. Install `devtools` package: copy the following command to R console and press Enter:
 ```
 install.packages("devtools", dependencies = TRUE)
 ```
 You might be asked to confirm by clicking 'Yes' or to select server from which the packages will be downloaded - select the first one
 
-6. Install mlemur with all dependencies using the following command:
+7. Install mlemur with all dependencies using the following command:
 ```
 devtools::install_github("krystianll/mlemur", ref = "master", auth_token = "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", dependencies = TRUE)
 ```
