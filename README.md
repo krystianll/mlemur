@@ -6,7 +6,7 @@
 
 3. Proceed to the next part. You can either follow instruction for installing the pre-compiled binary or compiling from the source file.
 ### Installation using pre-compiled binary
-1. Download mlemur zip file from <https://github.com/krystianll/mlemur/blob/master/binaries/Windows/mlemur_0.9.zip>
+1. Download mlemur zip file from <https://github.com/krystianll/mlemur/blob/master/binaries/Windows/mlemur_0.9.1.zip>
 
 2. Locate and run R.exe
 
@@ -59,8 +59,8 @@ Then follow the instructions in the new window.
 1. Locate and run R.app
 
 2. Download mlemur tgz file corresponding to the verion of R you have installed.
-- For Intel Macs use the following link: <https://github.com/krystianll/mlemur/blob/master/binaries/macOS_intel/mlemur_0.9.tgz>
-- For Apple Silicon (M1, M2) Macs use the following link: <https://github.com/krystianll/mlemur/blob/master/binaries/macOS_arm/mlemur_0.9.tgz>
+- For Intel Macs use the following link: <https://github.com/krystianll/mlemur/blob/master/binaries/macOS_intel/mlemur_0.9.1.tgz>
+- For Apple Silicon (M1, M2) Macs use the following link: <https://github.com/krystianll/mlemur/blob/master/binaries/macOS_arm/mlemur_0.9.1.tgz>
 - If you're not sure which version to choose, inspect the text in R main window:
 - Platform: aarch64-apple-darwinXX (64-bit) (with XX some number) means you should download the arm version
 - Platform: x86_64-apple-darwinXX (64-bit) (with XX some number) means you should download the intel version
