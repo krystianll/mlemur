@@ -1,12 +1,12 @@
 # mlemur
 ## Instructions (Windows)
-1. Install newest version of R (currently 4.2.1) in the default location from https://cran.r-project.org/bin/windows/base/
+1. Install newest version of R (currently 4.2.1) in the default location from <https://cran.r-project.org/bin/windows/base/>
 
-2. Install newest version of RTools (currently 4.2.0) in the default location from https://cran.r-project.org/bin/windows/Rtools/
+2. Install newest version of RTools (currently 4.2.0) in the default location from <https://cran.r-project.org/bin/windows/Rtools/>
 
 3. Proceed to the next part. You can either follow instruction for installing the pre-compiled binary or compiling from the source file.
 ### Installation using pre-compiled binary
-1. Download mlemur zip file from https://github.com/krystianll/mlemur/blob/master/binaries/Windows/mlemur_0.9.zip
+1. Download mlemur zip file from <https://github.com/krystianll/mlemur/blob/master/binaries/Windows/mlemur_0.9.zip>
 
 2. Locate and run R.exe
 
@@ -39,11 +39,11 @@ To initiate the graphical mode, use the following command in R:
 ```
 mlemur::mlemur()
 ```
-Alternatively, you can download the following clickable script: https://github.com/krystianll/mlemur/blob/master/run_mlemur.bat (Please right-click on the link and click "Save as". You can save the file in any location you choose). If Windows blocks the execution of the file, click "More info" and proceed
+Alternatively, you can download the following clickable script: <https://github.com/krystianll/mlemur/blob/master/run_mlemur.bat> (You can save the file in any location you choose). If Windows blocks the execution of the file, click "More info" and proceed
 ## Instructions (macOS)
 1. Install newest version of R (currently 4.2.1) in the default location.
-- For Intel Macs use the following link: https://cran.r-project.org/bin/macosx/base/
-- For Apple Silicon (M1, M2) Macs use the following link: https://cran.r-project.org/bin/macosx/big-sur-arm64/base/
+- For Intel Macs use the following link: <https://cran.r-project.org/bin/macosx/base/>
+- For Apple Silicon (M1, M2) Macs use the following link: <https://cran.r-project.org/bin/macosx/big-sur-arm64/base/>
 - If you're not sure which version to choose, click Apple logo in the top-left corner of the screen, choose About This Mac and inspect the Chip model
 
 2. Don't open R yet. Open Terminal.app. To do this, press and hold Command ⌘ key and then press Space key. Type Terminal and press Enter.
@@ -59,8 +59,8 @@ Then follow the instructions in the new window.
 1. Locate and run R.app
 
 2. Download mlemur tgz file corresponding to the verion of R you have installed.
-- For Intel Macs use the following link: https://github.com/krystianll/mlemur/blob/master/binaries/macOS_intel/mlemur_0.9.tgz
-- For Apple Silicon (M1, M2) Macs use the following link: https://github.com/krystianll/mlemur/blob/master/binaries/macOS_arm/mlemur_0.9.tgz
+- For Intel Macs use the following link: <https://github.com/krystianll/mlemur/blob/master/binaries/macOS_intel/mlemur_0.9.tgz>
+- For Apple Silicon (M1, M2) Macs use the following link: <https://github.com/krystianll/mlemur/blob/master/binaries/macOS_arm/mlemur_0.9.tgz>
 - If you're not sure which version to choose, inspect the text in R main window:
 - Platform: aarch64-apple-darwinXX (64-bit) (with XX some number) means you should download the arm version
 - Platform: x86_64-apple-darwinXX (64-bit) (with XX some number) means you should download the intel version
@@ -118,7 +118,7 @@ To initiate the graphical mode, use the following command in R:
 ```
 mlemur::mlemur()
 ```
-Alternatively, you can download the following clickable script: https://github.com/krystianll/mlemur/blob/master/run_mlemur.command (Please right-click on the link and click "Save as". You can save the file in any location you choose). Then open the Terminal window and copy the following command:
+Alternatively, you can download the following clickable script: <https://github.com/krystianll/mlemur/blob/master/run_mlemur.command> (You can save the file in any location you choose). Then open the Terminal window and copy the following command:
 ```
 chmod u+x 
 ```

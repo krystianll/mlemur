@@ -1,6 +1,48 @@
 ### functions for calculating ML point and interval estimates of m as well as LRT P values ###
 
+#' Simulate fluctuation test
+#'
+#' @description This function simulates a fluctuation assay consisting of n cultures, starting with N0 wild-type cells
+#' growing exponentially until reaching Nt wild-type cells. If cv is not 0, the number of wild-type cells per culture
+#' is drawn from gamma distribution. Wild-type cell growth is taken as deterministic while mutant cell growth is taken
+#' as stochastic according to a simple birth-and-death process. If plating efficiency is less than perfect, the success
+#' of plating each mutant cell is simulated using binomial distribution. 
+#' @param n number of parallel cultures in the experiment; a positive integer.
+#' @param rate average mutation rate; a positive number smaller than 1.
+#' @param N0 size of inoculum; a positive integer.
+#' @param Nt final number of cells in culture; a positive integer.
+#' @param mut_fit relative fitness of the mutant cells vs. wild-type cells; a positive number. Should not be used together
+#' with lag.
+#' @param death_prob death probability (same for mutants and wild-type cells); a non-negative number smaller
+#' than 0.5; relative (d)eath rate and death (p)robability are connected by the relation d = p/(1-p); p = d/(1+d).
+#' @param lag mean phenotypic lag of mutant cells in generations; a non-negative number. Should not be used together
+#' with mut_fit.
+#' @param e plating efficiency; a positive number not bigger than 1.
+#' @param cv coefficient of variation of the number of cells in culture; a non-negative number usually smaller than 1.
+#' @param trim a non-negative integer; if specified, any mutant cell count bigger than this number will be replaced
+#' with this number.
+#' @param ret return parameter; either "list" (default) or "vector".
+#' @return either a list of length two, each containing a vector of length n: "$mc" containing colony counts in parallel
+#' cultures while "$nt" contains the final number of cells in each culture; or a vector identical to "$mc".
+#' @export
+#' @examples
+#' rluria()
+#' rluria(n=100, rate=1e-7, lag = 2, trim=5000, ret="v")
+#' rluria(n=50, rate=1e-9, cv=0.5)
+#' @references
+#' Ycart B, Veziris N. Unbiased estimation of mutation rates under fluctuating final counts. PLoS One.
+#' 2014;9. doi:10.1371/journal.pone.0101434
+#' @references
+#' Zheng Q. A second look at the final number of cells in a fluctuation experiment. J Theor Biol.
+#' 2016;401: 54–63. doi:10.1016/j.jtbi.2016.04.027
+#' @references
+#' Mazoyer A, Drouilhet R, Despréaux S, Ycart B. Flan: An R package for inference on mutation models. R J.
+#' 2017;9: 334–351. doi:10.32614/rj-2017-029
+#' @references
+#' Zheng Q. rSalvador: An R package for the fluctuation experiment. G3 Genes, Genomes, Genet.
+#' 2017;7: 3849–3856. doi:10.1534/g3.117.300120
 rluria <- function(n=10, rate=1e-8, N0=1, Nt=1e9, mut_fit=1.0, death_prob=0, lag=0, e=1, cv=0, trim=0, ret="list") {
+  if (lag!=0 && mut_fit != 1.0) {warning("Phenotypic lag should not be used together with mutant fitness.")}
   ret <- match.arg(ret, c("list", "vector"))
   if (ret=="list") {
     return(rluria_list(n=n, rate=rate, N0=N0, Nt=Nt, mut_fit=mut_fit, death_prob=death_prob, lag=lag, e=e, cv=cv, trim=trim))
@@ -11,16 +53,30 @@ rluria <- function(n=10, rate=1e-8, N0=1, Nt=1e9, mut_fit=1.0, death_prob=0, lag
 }
 
 # Auxiliary sequence for probability computation
-# modified to make pmf computation independent of e and w for better re-use of algorithms
-# error check implemented to avoid numerical instability when e and w are small
+# 
+# @description For internal use only.
+# @references
 # Abramowitz M, Stegun I. Handbook of Mathematical Functions. Washington: United States Department of Commerce; 1964
-# Stewart FM. Genetica 1991 doi:10.1007/BF00123984
-# Jones ME. Journal of Theoretical Biology 1994 doi:10.1006/jtbi.1994.1032
-# Zheng Q. Math Biosci 2002 doi:10.1016/S0025-5564(02)00087-1
-# Zheng Q. Math Biosci 2005 doi:10.1016/j.mbs.2005.03.011
-# Zheng Q. Math Biosci 2008 doi:10.1016/j.mbs.2008.05.005
-# Zheng Q. Math Biosci 2008 doi:10.1016/j.mbs.2008.09.002
-
+# @references
+# Stewart FM. Fluctuation analysis: the effect of plating efficiency. Genetica. 1991;84: 51–55. doi:10.1007/BF00123984
+# @references
+# Jones ME. Luria-Delbrück Fluctuation Experiments; Accounting Simultaneously for Plating Efficiency and Differential
+# Growth Rate. Journal of Theoretical Biology. 1994. pp. 355–363. doi:10.1006/jtbi.1994.1032
+# @references
+# Angerer WP. A note on the evaluation of fluctuation experiments. Mutat Res - Fundam Mol Mech Mutagen.
+# 2001;479: 207–224. doi:10.1016/S0027-5107(01)00203-2
+# @references
+# Zheng Q. Statistical and algorithmic methods for fluctuation analysis with SALVADOR as an implementation. Math Biosci.
+# 2002;176: 237–252. doi:10.1016/S0025-5564(02)00087-1
+# @references
+# Zheng Q. New algorithms for Luria-Delbrück fluctuation analysis. Math Biosci.
+# 2005;196: 198–214. doi:10.1016/j.mbs.2005.03.011
+# @references
+# Zheng Q. On Bartlett’s formulation of the Luria-Delbrück mutation model. Math Biosci.
+# 2008;215: 48–54. doi:10.1016/j.mbs.2008.05.005
+# @references
+# Zheng Q. A note on plating efficiency in fluctuation experiments. Math Biosci.
+# 2008;216: 150–153. doi:10.1016/j.mbs.2008.09.002
 aux.seq <- function(e = 1, w = 1, death = 0, lag = 0, phi = 0, n = 10, integrate = FALSE) {
   
   error <- 0
@@ -105,81 +161,60 @@ aux.seq <- function(e = 1, w = 1, death = 0, lag = 0, phi = 0, n = 10, integrate
   }
 }
 
-# Approximate methods of m estimation
-# P0, Jones median, Drake median, and Lea-Coulson median
-# Most useful as an initial guess for m in Newton method
-# Jones ME. Mutat Res Mutagen Relat Subj 1993 doi:10.1016/0165-1161(93)90146-Q
-# Crane GJ, Thomas SM, Jones ME. Mutat Res - Fundam Mol Mech Mutagen 1996 doi:10.1016/0027-5107(96)00009-7
-# Rosche WA, Foster PL. Methods 2000 doi:10.1006/meth.1999.0901
-m_approx <- function(data, eff) {
-  if (eff<=0) return(NA)
-  if (median(data)==0) {
-    m <- ifelse(eff==1, -log(sum(data==0)/length(data)), (1-eff)/eff/log(eff)*(log(sum(data==0)/length(data))))
-  } else {
-    m <- (median(data)/eff-0.693)/(log(median(data)/eff)+0.367)
-  }
-  return(m)
-}
-
-# p0 <- function(data, eff=1, lag=0) {
-#   # unlist(lapply(test2-poisson, max, 0)); m/(1+poisson)
-#   if (all(data==0)) return(NA)
-#   m <- ifelse(eff==1, -log(sum(data==0)/length(data)), (1-eff)/eff/log(eff)*(log(sum(data==0)/length(data))))
-#   m <- m*2^lag
-#   return(m)
-# }
-
+#' Estimate m using p0 method
+#'
+#' @param data a vector of integer-valued colony counts.
+#' @param e plating efficiency; a positive number not bigger than 1.
+#' @param w mutant relative fitness; a positive number.
+#' @param d death probability of wild-type and mutant cells; a non-negative number smaller than 0.5; relative (d)eath rate
+#' and death (p)robability are connected by the relation d = p/(1-p); p = d/(1+d).
+#' @param lag phenotypic lag; a non-negative number.
+#' @param phi relative size of the inoculum (N0/Nt); a non-negative number.
+#' @param poisson average number of residual Poisson-distributed mutations on the plate; a non-negative number.
+#' @return a single non-negative value of m.
+#' @export
+#' @examples
+#' p0(c(0, 0, 1, 0, 1, 1, 0, 0, 0, 0, 3, 1, 0, 10, 0, 0, 0, 1))
 p0 <- function(data, e=1, w=1, d=0, lag=0, phi=0, poisson=0) {
+  if (w!=1 && lag!=0) {warning("Phenotypic lag should not be used together with mutant fitness.")}
   if (all(data == 0)) return(NA)
   m <- log(sum(data == 0)/length(data))/aux.seq(e = e, w = w, death = d, lag = lag, phi = phi, n = 1)[1] - poisson
   return(m)
 }
 
-# drake.formula <- function(data, eff=1) {
-#   mut <- data/eff
-#   m <- rep(0, length(data))
-#   for (i in 1:length(data)) {
-#     m[i] <- (1 + sqrt(1+4*mut[i]))/2
-#     for (j in 1:500) {
-#       g <- m[i]/mut[i]-1/(log(m[i]))
-#       dg <- 1/(mut[i])+(1/m[i])*(1/(log(m[i]))^2)
-#       dx <- g/dg
-#       if (abs(dx)/m[i]<1e-6) {
-#         break
-#       } else {
-#         m[i] <- m[i]-dx
-#       }
-#     }
-#   }
-#   mest <- median(m)
-#   return(mest)
-# }
-
-# lea.coulson.median <- function(data, eff=1) {
-#   mut <- data/eff
-#   m <- rep(0, length(data))
-#   for (i in 1:length(data)) {
-#     m[i] <- (1 + sqrt(1+4*mut[i]))/2
-#     for (j in 1:500) {
-#       g <- m[i]/(mut[i]-poisson)-1/(log(m[i]/L)+1.24)
-#       dg <- 1/(mut[i]-poisson)+(1/m[i])*(1/(log(m[i]/L)+1.24)^2)
-#       dx <- g/dg
-#       if (abs(dx)/m[i]<1e-6) {
-#         break
-#       } else {
-#         m[i] <- m[i]-dx
-#       }
-#     }
-#   }
-#   mest <- median(m)
-#   return(mest)
-# }
-
-# The basic formula comes from a well-known paper Lea DE, Coulson CA. J Genet. 1949 doi:10.1007/BF02986080
-# Corrections for partial plating, phenotypic delay and residual mutation after Angerer WP. Mutat Res - Fundam Mol Mech Mutagen. 2001 doi:10.1016/S0027-5107(01)00203-2
-# Correction for differential growth taken from Eq. 12 in Koch AL. Mutat Res - Fundam Mol Mech Mutagen. 1982 doi:10.1016/0027-5107(82)90252-4
-# Correction for mutant death based on the Angerer's rationale regarding phenotypic lag, with Newcombe correction for extra cellular divisions Newcombe HB. Genetics. 1948 doi:10.1093/genetics/33.5.447
+#' Estimate m using Lea-Coulson method
+#' 
+#' @description The basic formula comes from a well-known paper by Lea & Coulson. Corrections for partial plating,
+#' phenotypic delay (*only non-stochastic*), residual mutations, and differential growth were taken from other Angerer and Koch.
+#' Correction for mutant death is based on the Angerer's rationale regarding phenotypic lag, with Newcombe correction
+#' for extra cellular divisions.
+#' @param data a vector of integer-valued colony counts.
+#' @param e plating efficiency; a positive number not bigger than 1.
+#' @param w mutant relative fitness; a positive number.
+#' @param poisson average number of residual Poisson-distributed mutations on the plate; a non-negative number.
+#' @param lag phenotypic lag (*only non-stochastic*); a non-negative number.
+#' @param death death probability of wild-type and mutant cells; a non-negative number smaller than 0.5; relative (d)eath rate
+#' and death (p)robability are connected by the relation d = p/(1-p); p = d/(1+d).
+#' @param confint if TRUE, 95 percent confidence intervals will be estimated by bootstrap using boot package.
+#' @return a single non-negative value of m, or a vector of length 3 containing estimate of m and lower and upper limits
+#' of 95 percent CI.
+#' @export
+#' @examples
+#' lea.coulson.median(c(67, 12, 112, 24, 2151, 159, 102, 60, 32, 26))
+#' @references
+#' Lea DE, Coulson CA. The distribution of the numbers of mutants in bacterial populations. J Genet.
+#' 1949;49: 264–285. doi:10.1007/BF02986080
+#' @references
+#' Newcombe HB. Delayed Phenotypic Expression of Spontaneous Mutations in Escherichia Coli. Genetics.
+#' 1948;33: 447–476. doi:10.1093/genetics/33.5.447
+#' @references
+#' Koch AL. Mutation and growth rates from Luria-Delbrück fluctuation tests. Mutat Res - Fundam Mol Mech Mutagen.
+#' 1982;95: 129–143. doi:10.1016/0027-5107(82)90252-4
+#' @references
+#' Angerer WP. A note on the evaluation of fluctuation experiments. Mutat Res - Fundam Mol Mech Mutagen.
+#' 2001;479: 207–224. doi:10.1016/S0027-5107(01)00203-2
 lea.coulson.median <- function(data, e=1, w=1, poisson=0, lag=0, death=0, confint=FALSE) {
+  if (w!=1 && lag!=0) {warning("Phenotypic lag should not be used together with mutant fitness.")}
   L <- 2^lag
   d <- (1-death)/(1-2*death)
   
@@ -189,8 +224,6 @@ lea.coulson.median <- function(data, e=1, w=1, poisson=0, lag=0, death=0, confin
   } else {
     m <- (1 + sqrt(1+4*mut*d*L))/2
     for (j in 1:500) {
-      # f <- m/(mut)-1/(log(m/L/d)+1.24)
-      # df.dm <- 1/(mut)+(1/m)*(1/(log(m/L/d)+1.24)^2)
       f <- m*d/(mut)-1/(log(m/L)+1.24)
       df.dm <- 1*d/(mut)+(1/m)*(1/(log(m/L)+1.24)^2)
       ratio <- f/df.dm
@@ -210,17 +243,47 @@ lea.coulson.median <- function(data, e=1, w=1, poisson=0, lag=0, death=0, confin
   }
 }
 
-# Modifications were copied from Lea-Coulson
-drake.formula <- function(data, eff=1, w=1, poisson=0, lag=0) {
-  mut <- median(data)/eff/w-poisson
+#' Estimate m using Drake method
+#' 
+#' @description The basic formula comes from the Drake paper. Corrections for partial plating,
+#' phenotypic delay (*only non-stochastic*), residual mutations, and differential growth were taken from other Angerer and Koch.
+#' Correction for mutant death is based on the Angerer's rationale regarding phenotypic lag, with Newcombe correction
+#' for extra cellular divisions.
+#' @param data a vector of integer-valued colony counts.
+#' @param e plating efficiency; a positive number not bigger than 1.
+#' @param w mutant relative fitness; a positive number.
+#' @param poisson average number of residual Poisson-distributed mutations on the plate; a non-negative number.
+#' @param lag phenotypic lag (*only non-stochastic*); a non-negative number.
+#' @param death death probability of wild-type and mutant cells; a non-negative number smaller than 0.5; relative (d)eath rate
+#' and death (p)robability are connected by the relation d = p/(1-p); p = d/(1+d).
+#' @return a single non-negative value of m.
+#' @export
+#' @examples
+#' drake.formula(c(67, 12, 112, 24, 2151, 159, 102, 60, 32, 26))
+#' @references
+#' Newcombe HB. Delayed Phenotypic Expression of Spontaneous Mutations in Escherichia Coli. Genetics.
+#' 1948;33: 447–476. doi:10.1093/genetics/33.5.447
+#' @references
+#' Koch AL. Mutation and growth rates from Luria-Delbrück fluctuation tests. Mutat Res - Fundam Mol Mech Mutagen.
+#' 1982;95: 129–143. doi:10.1016/0027-5107(82)90252-4
+#' @references
+#' Drake JW. A constant rate of spontaneous mutation in DNA-based microbes. Proc Natl Acad Sci U S A.
+#' 1991;88: 7160–7164. doi:10.1073/pnas.88.16.7160
+#' @references
+#' Angerer WP. A note on the evaluation of fluctuation experiments. Mutat Res - Fundam Mol Mech Mutagen.
+#' 2001;479: 207–224. doi:10.1016/S0027-5107(01)00203-2
+drake.formula <- function(data, e=1, w=1, poisson=0, lag=0, death=0) {
+  if (w!=1 && lag!=0) {warning("Phenotypic lag should not be used together with mutant fitness.")}
+  d <- (1-death)/(1-2*death)
+  mut <- median(data)/e/w-poisson
   if (mut<=0) {
     return(NA)
   } else {
     L <- 2^lag
-    m <- (1 + sqrt(1+4*mut))/2
+    m <- (1 + sqrt(1+4*mut*d*L))/2
     for (j in 1:500) {
-      f <- m/(mut)-1/(log(m/L))
-      df.dm <- 1/(mut)+(1/m)*(1/(log(m/L))^2)
+      f <- m*d/(mut)-1/(log(m/L))
+      df.dm <- 1*d/(mut)+(1/m)*(1/(log(m/L))^2)
       ratio <- f/df.dm
       if (abs(ratio)/m<1e-6) {
         break
@@ -232,29 +295,59 @@ drake.formula <- function(data, eff=1, w=1, poisson=0, lag=0) {
   }
 }
 
+#' Estimate m using Jones method of the median
+#'
+#' @description The algorithm comes from rSalvador (jones.median.plating). It is included for the sake of
+#' self-containedness.
+#' @param data a vector of integer-valued colony counts.
+#' @param eff plating efficiency; a positive number not bigger than 1.
+#' @return a single non-negative value of m.
+#' @export
+#' @examples
+#' jones.median(c(67, 12, 112, 24, 2151, 159, 102, 60, 32, 26))
+#' @references
+#' Zheng Q. rSalvador: An R package for the fluctuation experiment. G3 Genes, Genomes, Genet.
+#' 2017;7: 3849–3856. doi:10.1534/g3.117.300120
 jones.median <- function(data, eff=1) {
   m <- rep(0, length(data))
   for (i in 1: length(data)) {
     m[i] <- (data[i]/eff-0.693)/((log(data[i])/eff)+0.367)
   }
-  mest <- median(m)
-  return(mest)
+  m <- median(m)
+  return(m)
 }
 
+#' Estimate m using Koch method of quartiles
+#'
+#' @description The formula comes from Rosche and Foster (2000).
+#' @param data a vector of integer-valued colony counts.
+#' @param lag phenotypic lag; a non-negative number.
+#' @return a vector of length 4 containing mean m as well as first, second and third quartile.
+#' @export
+#' @examples
+#' koch.quartiles(c(67, 12, 112, 24, 2151, 159, 102, 60, 32, 26))
+#' @references
+#' Rosche WA, Foster PL. Determining Mutation Rates in Bacterial Populations. Methods.
+#' 2000;20: 4–17. doi:10.1006/meth.1999.0901
 koch.quartiles <- function(data, lag = 0){
   q <- as.vector(quantile(data/2^lag, c(0.25, 0.50, 0.75)))
   m1 <- (1.7335 + 0.4474*q[1] - 0.002755*q[1]*q[1])*2^lag
   m2 <- (1.1580 + 0.2730*q[2] - 0.000761*q[2]*q[2])*2^lag
   m3 <- (0.6658 + 0.1497*q[3] - 0.0001387*q[3]*q[3])*2^lag
-  print(c(mean(c(m1, m2, m3)), m1, m2, m3))
-  
-  q <- as.vector(quantile(data, c(0.25, 0.50, 0.75)))
-  m1 <- 1.7335 + 0.4474*q[1] - 0.002755*q[1]*q[1]
-  m2 <- 1.1580 + 0.2730*q[2] - 0.000761*q[2]*q[2]
-  m3 <- 0.6658 + 0.1497*q[3] - 0.0001387*q[3]*q[3]
   return(c(mean(c(m1, m2, m3)), m1, m2, m3))
 }
 
+#' Estimate m using Luria-Delbruck method of the mean
+#'
+#' @description The formula comes from Rosche and Foster (2000).
+#' @param data a vector of integer-valued colony counts.
+#' @return a single non-negative value of m.
+#' @export
+#' @examples
+#' luria.delbruck.mean(c(67, 12, 112, 24, 2151, 159, 102, 60, 32, 26))
+#' @references
+#' Rosche WA, Foster PL. Determining Mutation Rates in Bacterial Populations. Methods.
+#' 2000;20: 4–17. doi:10.1006/meth.1999.0901
 luria.delbruck.mean <- function(data) {
   C <- length(data)
   r <- mean(data)
@@ -277,34 +370,6 @@ luria.delbruck.mean <- function(data) {
   return(m)
 }
 
-# death.corr <- function(m.obs, dr) {
-#   z=dr/(1-dr)
-#   # r <- (5*m.obs-2.236*sqrt(5*m.obs^2-6*m.obs^2*z))/(3*z)
-#   r <- m.obs
-#   for (i in 1:500) {
-#     # print(r)
-#     f.r <- log(1.0945*r^-0.0299)*r^3*z^2/m.obs^2 + log(0.6225*r^0.0551)*r^2*z/m.obs + r - m.obs
-#     df.dr <- 1 + (0.0551*r^1.*z)/m.obs - (0.0299*r^2.*z^2)/m.obs^2 + (3*r^2*z^2*log(1.0945/r^0.0299))/m.obs^2 + (2*r*z*log(0.6225*r^0.0551))/m.obs
-#     ratio <- f.r/df.dr
-#     if (abs(ratio/r) < 1e-6) {return(r)}
-#     else {r <- r-ratio}
-#   }
-# }
-# 
-# death.corr.2 <- function(o, d) {
-#   z <- d/(1-d)
-#   r <- suppressWarnings((5*o-2.236*sqrt(5*o^2-6*o^2*z))/(3*z))
-#   if (!is.finite(r)) r <- o
-#   for (i in 1:500) {
-#     # print(r)
-#     f.r <- -0.006859 -  0.100553/(9.434736 + r) + (-1.628842 + sqrt(1 + exp(d)) - 0.011604/(6.321826 + r))*log(o/r)
-#     df.dr <- -(sqrt(1 + exp(d))/r) + 0.100553/(9.434736 + r)^2 + (2*(0.814421 + 0.005802/(6.321826 + r)))/r + (0.011604*log(o/r))/(6.321826 + r)^2
-#     ratio <- f.r/df.dr
-#     if (abs(ratio/r) < 1e-6) {return(r)}
-#     else {r <- r-ratio}
-#   }
-# }
-
 m_guess <- function(data, e=1, w=1, lag=0, death=0, poisson=0) {
   m <- vector(length = 0, mode = "numeric")
   if (poisson!=0) {
@@ -318,26 +383,54 @@ m_guess <- function(data, e=1, w=1, lag=0, death=0, poisson=0) {
     m <- append(m, p0(data = data, e = e, w = w, lag = lag, d = death))
   } else {
     m <- append(m, suppressWarnings(lea.coulson.median(data = data, e = e, w = w, poisson = poisson, lag = lag, death = death)))
-    # m <- append(m, jones.median(data, eff = e))
   }
   return(as.vector(na.exclude(m)))
 }
 
-### Calculate MLE, CI, and P value under the Bartlett model ###
-# Combined functions for B0 (gamma-mixture) distribution indexed by e and cv
-# based on functions newton.B0 and confint.B0 from rSalvador 1.8
-# P values can be calculated using Likelihood Ratio Test, using an established framework
-# simplified and optimised to avoid redundant computations, partial plating is possible in all cases
-# arbitrary precision arithmetics has been implemented and trial-and-error iterative initial value of m approach is used when necessary to avoid under- and overflow
-# Zheng Q. Math Biosci 2008 doi:10.1016/j.mbs.2008.09.002
-# Zheng Q. Statistics (Ber) 2010 doi:10.1080/02331880903236868
-# Zheng Q. Genetica 2016 doi:10.1007/s10709-016-9904-3
+#' Estimate m using Maximum Likelihood Method and calculate 95 percent CI using inverted Likelihood Ratio Test
+#' 
+#' @description This function finds Maximum Likelihood Estimate of m, the average number of mutations in culture.
+#' Then it proceeds to find Likelihood Ratio-based confidence limits for m. It is loosely based on newton.LD,
+#' newton.LD.plating, newton.B0, confint.LD, confint.LD.plating, and confint.B0 functions from rSalvador,
+#' simplified and optimised to avoid redundant computations. It uses a hybrid Newton-bisection
+#' algorithm as well as arbitrary-precision arithmetic if necessary for better stability.
+#'
+#' @param data a vector of integer-valued colony counts.
+#' @param e plating efficiency; a positive number not bigger than 1.
+#' @param w mutant relative fitness; a positive number.
+#' @param lag phenotypic lag; a non-negative number.
+#' @param poisson average number of residual Poisson-distributed mutations on the plate; a non-negative number.
+#' @param death death probability of wild-type and mutant cells; a non-negative number smaller than 0.5; relative (d)eath rate
+#' and death (p)robability are connected by the relation d = p/(1-p); p = d/(1+d).
+#' @param phi relative size of the inoculum (N0/Nt); a non-negative number.
+#' @param cv coefficient of variation of the final number of cells in each culture.
+#' @param confint if TRUE (default), confidence intervals at ci.level will be calculated.
+#' @param ci.level confidence interval size, default 0.95.
+#' @param verbose if TRUE, mlemur will print messages to the console.
+#' @return a single non-negative value of m, or a vector of length 3 containing MLE of m as well lower and upper limit
+#' of 95 percent CI.
+#' @export
+#' @examples
+#' mle.mutations(data = c(67, 12, 112, 24, 2151, 159, 102, 60, 32, 26))
+#' mle.mutations(data = c(71, 19, 4, 32, 12, 74, 0, 35, 8, 13, 9, 5000, 31, 6, 10, 106, 0, 22, 4, 69,
+#' 30, 47, 237, 15, 74, 89, 135, 11, 30, 1), lag = 2, cv = 0.3, ci.level = 0.68)
+#' @references
+#' Zheng Q. Statistical and algorithmic methods for fluctuation analysis with SALVADOR as an implementation. Math Biosci.
+#' 2002;176: 237–252. doi:10.1016/S0025-5564(02)00087-1
+#' @references
+#' Zheng Q. New algorithms for Luria-Delbrück fluctuation analysis. Math Biosci.
+#' 2005;196: 198–214. doi:10.1016/j.mbs.2005.03.011
+#' @references
+#' Zheng Q. On Bartlett’s formulation of the Luria-Delbrück mutation model. Math Biosci.
+#' 2008;215: 48–54. doi:10.1016/j.mbs.2008.05.005
+#' @references
+#' Zheng Q. rSalvador: An R package for the fluctuation experiment. G3 Genes, Genomes, Genet.
+#' 2017;7: 3849–3856. doi:10.1534/g3.117.300120
 mle.mutations <- function(data, e=1, w=1, lag=0, poisson=0, death=0, phi=0, cv=0, confint=TRUE, ci.level=0.95, verbose=FALSE) {
+  if (w!=1 && lag!=0) {warning("Phenotypic lag should not be used together with mutant fitness.")}
   n <- max(data)+1
   if (cv > 0) k <- 1/cv/cv else k <- 0
   seq <- aux.seq(e = e, w = w, death = death, lag = lag, phi = phi, n = n-1)
-  # seq <- aux_seq_lag_pois_n_500[[as.integer(lag*10)]][1:n]
-  # seq <- aux_seq_lag_gamma(lag = lag, n = n)
   if (any(is.na(seq))) {if (verbose) message("m: failed to get the sequence"); if (confint==TRUE) {return(c(NA,NA,NA))} else {return(c(NA))}}
   
   # mutants in the culture
@@ -385,116 +478,59 @@ mle.mutations <- function(data, e=1, w=1, lag=0, poisson=0, death=0, phi=0, cv=0
   }
 }
 
-# lrt.mutations <- function(datax, datay, ex=1, ey=1, wx=1, wy=1, lagx=0, lagy=0, poissonx=0, poissony=0, deathx=0, deathy=0,
-#                           phix=0, phiy=0, cvx=0, cvy=0, Nx=1, Ny=1, Mx=NA, My=NA, verbose=FALSE) {
-#   
-#   if (!is.finite(Mx)) {Mx <- mle.mutations(data = datax, e = ex, w=wx, lag=lagx, poisson=poissonx, death=deathx, phi=phix, cv = cvx, confint = FALSE, verbose=verbose)} else {Mx <- Mx}
-#   if (!is.finite(My)) {My <- mle.mutations(data = datay, e = ey, w=wy, lag=lagy, poisson=poissony, death=deathy, phi=phiy, cv = cvy, confint = FALSE, verbose=verbose)} else {My <- My}
-#   if (!is.finite(Mx) | !is.finite(My)) {if (verbose) message("Couldn't estimate mutation rates"); return(NA)}
-#   if (verbose) message(paste("Estimated numbers of mutations are", Mx, "and", My))
-#   if (verbose) message(paste("Estimated mutation rates are", Mx/Nx, "and", My/Ny))
-#   
-#   if (Nx>=Ny){
-#     data1 <- datax; e1 <- ex; w1 <- wx; lag1 <- lagx; poisson1 <- poissonx; death1 <- deathx; phi1 <- phix; cv1 <- cvx; N1 <- Nx; M1 <- Mx
-#     data2 <- datay; e2 <- ey; w2 <- wy; lag2 <- lagy; poisson2 <- poissony; death2 <- deathy; phi2 <- phiy; cv2 <- cvy; N2 <- Ny; M2 <- My
-#   } else {
-#     data1 <- datay; e1 <- ey; w1 <- wy; lag1 <- lagy; poisson1 <- poissony; death1 <- deathy; phi1 <- phiy; cv1 <- cvy; N1 <- Ny; M1 <- My
-#     data2 <- datax; e2 <- ex; w2 <- wx; lag2 <- lagx; poisson2 <- poissonx; death2 <- deathx; phi2 <- phix; cv2 <- cvx; N2 <- Nx; M2 <- Mx
-#   }
-#   
-#   # mutation rates
-#   n1 <- max(data1)+1
-#   n2 <- max(data2)+1
-#   if (cv1>0) {k1 <- 1/cv1/cv1} else {k1 <- 0}
-#   if (cv2>0) {k2 <- 1/cv2/cv2} else {k2 <- 0}
-#   R <- N2/N1
-#   
-#   seq1 <- aux.seq(e = e1, w = w1, death = death1, lag = lag1, phi = phi1, n = n1-1)
-#   seq2 <- aux.seq(e = e2, w = w2, death = death2, lag = lag2, phi = phi2, n = n2-1)
-#   
-#   # combined mutation rate
-#   mg <- seq(min(M1,M2), max(M1,M2), length.out=10)
-#   m1 <- -1
-#   for (value in mg) {
-#     if (m1>0) {break}
-#     if (verbose) message(paste("m_combined: using guess", value))
-#     m0 <- value
-#     iter <- 0
-#     repeat {
-#       iter <- iter+1
-#       if (verbose) message(paste("m_combined: iteration", iter))
-#       if (iter>30) {if (verbose) message("m_combined: reached iteration limit"); m1 <- -1; break}
-#       score.fisher.ratio <- combo_score_fisher_ratio(m = m0, n_1 = n1, n_2 = n2, R = R, data_1 = data1, seq_1 = seq1, data_2 = data2, seq_2 = seq2, k_1 = k1, k_2 = k2, poisson_1 = poisson1, poisson_2 = poisson2)
-#       if (!is.finite(score.fisher.ratio)) {if (verbose) message("m_combined: non-numeric value encountered"); m1 <- -1; break}
-#       m1 <- m0+score.fisher.ratio
-#       if (m1 <= 0) {if (verbose) message("m_combined: negative estimate"); m1 <- -1; break}
-#       if (abs(score.fisher.ratio)/m0 < 1e-6) {break} else {m0 <- m1}
-#     }
-#   }
-#   if (m1<0) if (verbose) message("m_combined: trying MPFR")
-#   # MPFR
-#   for (value in mg) {
-#     if (m1>0) {break}
-#     if (verbose) message(paste("m_combined: using guess", value))
-#     m0 <- value
-#     iter <- 0
-#     repeat {
-#       iter <- iter+1
-#       if (verbose) message(paste("m_combined: iteration", iter))
-#       if (iter>30) {if (verbose) message("m_combined: reached iteration limit"); m1 <- -1; break}
-#       score.fisher.ratio <- combo_score_fisher_ratio_boost(xm = m0, n_1 = n1, n_2 = n2, xR = R, data_1 = data1, seq_1 = seq1, data_2 = data2, seq_2 = seq2, xk_1 = k1, xk_2 = k2, xpoisson_1 = poisson1, xpoisson_2 = poisson2)
-#       if (!is.finite(score.fisher.ratio)) {if (verbose) message("m_combined: non-numeric value encountered"); m1 <- -1; break}
-#       m1 <- m0+score.fisher.ratio
-#       if (m1 <= 0) {if (verbose) message("m_combined: negative estimate"); m1 <- -1; break}
-#       if (abs(score.fisher.ratio)/m0 < 1e-6) {break} else {m0 <- m1}
-#     }
-#   }
-#   if (m1<0) {
-#     mg <- seq(min(M1,M2), max(M1,M2,M2/R), length.out=200)
-#     if (verbose) message("m_combined: no success, looping")
-#     # for (i in 0:100) {
-#     for (value in mg) {
-#       if (m1>0) {break}
-#       # m0 <- min(M1,M2)+i*(abs(M1-M2)/100)
-#       m0 <- value
-#       if (verbose) message(paste("m_combined: using guess", m0))
-#       iter <- 0
-#       repeat {
-#         iter <- iter+1
-#         if (verbose) message(paste("m_combined: iteration", iter))
-#         if (iter>30) {if (verbose) message("m_combined: reached iteration limit"); m1 <- -1; break}
-#         score.fisher.ratio <- combo_score_fisher_ratio(m = m0, n_1 = n1, n_2 = n2, R = R, data_1 = data1, seq_1 = seq1, data_2 = data2, seq_2 = seq2, k_1 = k1, k_2 = k2, poisson_1 = poisson1, poisson_2 = poisson2)
-#         if (!is.finite(score.fisher.ratio)) {score.fisher.ratio <- combo_score_fisher_ratio_boost(xm = m0, n_1 = n1, n_2 = n2, xR = R, data_1 = data1, seq_1 = seq1, data_2 = data2, seq_2 = seq2, xk_1 = k1, xk_2 = k2, xpoisson_1 = poisson1, xpoisson_2 = poisson2)}
-#         if (!is.finite(score.fisher.ratio)) {if (verbose) message("m_combined: non-numeric value encountered"); m1 <- -1; break}
-#         m1 <- m0+score.fisher.ratio
-#         if (m1 <= 0) {if (verbose) message("m_combined: negative estimate"); m1 <- -1; break}
-#         if(abs(score.fisher.ratio)/m0 < 1e-6) {break} else {m0 <- m1}
-#       }
-#     }
-#   }
-#   if (m1 < 0) {if (verbose) message("m_combined: couldn't estimate m"); return(NA)}
-#   
-#   MC <- m1
-#   
-#   if (verbose) message(paste("m_combined: obtained estimate", MC))
-#   
-#   # log likelihood functions
-#   la <- logprob(m = MC, len = n1, data = data1, seq = seq1, k = k1, poisson = poisson1)
-#   if (!is.finite(la)) {la <- logprob_boost(xm = MC, len = n1, data = data1, seq = seq1, xk = k1, xpoisson = poisson1)}
-#   lb <- logprob(m = R*MC, len = n2, data = data2, seq = seq2, k = k2, poisson = poisson2)
-#   if (!is.finite(lb)) {lb <- logprob_boost(xm = R*MC, len = n2, data = data2, seq = seq2, xk = k2, xpoisson = poisson2)}
-#   lc <- logprob(m = M1, len = n1, data = data1, seq = seq1, k = k1, poisson = poisson1)
-#   if (!is.finite(lc)) {lc <- logprob_boost(xm = M1, len = n1, data = data1, seq = seq1, xk = k1, xpoisson = poisson1)}
-#   ld <- logprob(m = M2, len = n2, data = data2, seq = seq2, k = k2, poisson = poisson2)
-#   if (!is.finite(ld)) {ld <- logprob_boost(xm = M2, len = n2, data = data2, seq = seq2, xk = k2, xpoisson = poisson2)}
-#   if(!(all(is.finite(c(la,lb,lc,ld))))) {message("loglikelihood: non-numeric value encountered"); return(NA)}
-#   l0 <- la+lb
-#   l1 <- lc+ld
-#   chi <- -2*(l0-l1)
-#   pval <- 1-pchisq(chi,1)
-#   return(pval)
-# }
-
+#' Calculate p-values using Likelihood Ratio Test
+#' 
+#' @description This function calculates LRT-based p-values to assess the statistical significance of the
+#' differences between two mutation rates (X and Y). It is loosely based on LRT.LD and LRT.LD.plating functions from rSalvador,
+#' simplified and optimised to avoid redundant computations. It uses a hybrid Newton-bisection
+#' algorithm as well as arbitrary-precision arithmetic if necessary for better stability.
+#' @param datax a vector of integer-valued colony counts for strain X.
+#' @param datay a vector of integer-valued colony counts.
+#' @param ex plating efficiency for strain X; a positive number not bigger than 1.
+#' @param ey plating efficiency for strain Y; a positive number not bigger than 1.
+#' @param wx mutant relative fitness for strain X; a positive number.
+#' @param wy mutant relative fitness for strain Y; a positive number.
+#' @param lagx phenotypic lag for strain X; a non-negative number.
+#' @param lagy phenotypic lag for strain Y; a non-negative number.
+#' @param poissonx average number of residual Poisson-distributed mutations on the plate for strain X; a non-negative number.
+#' @param poissony average number of residual Poisson-distributed mutations on the plate for strain Y; a non-negative number.
+#' @param deathx death probability of wild-type and mutant cells for strain X; a non-negative number smaller than 0.5;
+#' relative (d)eath rate and death (p)robability are connected by the relation d = p/(1-p); p = d/(1+d).
+#' @param deathy death probability of wild-type and mutant cells for strain Y; a non-negative number smaller than 0.5;
+#' relative (d)eath rate and death (p)robability are connected by the relation d = p/(1-p); p = d/(1+d).
+#' @param phix relative size of the inoculum (N0/Nt) for strain X; a non-negative number.
+#' @param phiy relative size of the inoculum (N0/Nt) for strain Y; a non-negative number.
+#' @param cvx coefficient of variation of the final number of cells in each culture for strain X.
+#' @param cvy coefficient of variation of the final number of cells in each culture for strain Y.
+#' @param Nx average number of cells in culture for strain X.
+#' @param Ny average number of cells in culture for strain Y.
+#' @param Mx if known, MLE of m for strain X can be put here to speed up computations; mostly for internal use.
+#' @param My if known, MLE of m for strain Y can be put here to speed up computations; mostly for internal use.
+#' @param verbose if TRUE, mlemur will print messages to the console.
+#' @return a single value of p-value between 0 and 1.
+#' @export
+#' @examples
+#' lrt.mutations(datax = c(26, 9, 16, 34, 15, 25, 77, 13, 14, 19), ex = 0.5,
+#' datay = c(67, 12, 112, 24, 2151, 159, 102, 60, 32, 26))
+#' @examples
+#' lrt.mutations(datax = c(37, 1, 5, 43, 53, 11, 82, 2, 19, 58, 28, 70, 9, 14, 5,
+#' 9, 25, 55, 2, 41, 19), datay = c(37, 1, 5, 43, 53, 11, 82, 2, 19, 58, 28,
+#' 70, 9, 14, 5, 9, 25, 55, 2, 41, 19), lagy = 2)
+#' @references
+#' Zheng Q. Statistical and algorithmic methods for fluctuation analysis with SALVADOR as an implementation. Math Biosci.
+#' 2002;176: 237–252. doi:10.1016/S0025-5564(02)00087-1
+#' @references
+#' Zheng Q. New algorithms for Luria-Delbrück fluctuation analysis. Math Biosci.
+#' 2005;196: 198–214. doi:10.1016/j.mbs.2005.03.011
+#' @references
+#' Zheng Q. On Bartlett’s formulation of the Luria-Delbrück mutation model. Math Biosci.
+#' 2008;215: 48–54. doi:10.1016/j.mbs.2008.05.005
+#' @references
+#' Zheng Q. Comparing mutation rates under the Luria–Delbrück protocol. Genetica.
+#' 2016;144: 351–359. doi:10.1007/s10709-016-9904-3
+#' @references
+#' Zheng Q. rSalvador: An R package for the fluctuation experiment. G3 Genes, Genomes, Genet.
+#' 2017;7: 3849–3856. doi:10.1534/g3.117.300120
 lrt.mutations <- function(datax, datay, ex=1, ey=1, wx=1, wy=1, lagx=0, lagy=0, poissonx=0, poissony=0, deathx=0, deathy=0,
                           phix=0, phiy=0, cvx=0, cvy=0, Nx=1, Ny=1, Mx=NA, My=NA, verbose=FALSE) {
   
@@ -551,897 +587,50 @@ lrt.mutations <- function(datax, datay, ex=1, ey=1, wx=1, wy=1, lagx=0, lagy=0, 
   l1 <- lc+ld
   
   chi <- -2*(l0-l1)
-  # pval <- 1-pchisq(chi,1)
   pval <- pchisq(chi,1,lower.tail = F)
   return(pval)
 }
 
-# ### Calculate MLE, CI, and P value under Luria-Delbruck model ###
-# # Combined functions for both Lea-Coulson (phi=1, w=1) and Mandelbrot-Koch (phi=1, w!=1) distributions
-# # based on functions newton.LD, newton.MK, newton.LD.plating, confint.LD, confint.MK, confint.LD.plating from rSalvador 1.8
-# # simplified and optimised to avoid redundant computations, partial plating is possible in all cases
-# # arbitrary precision arithmetics has been implemented and trial-and-error iterative initial value of m approach is used when necessary to avoid under- and overflow
-# # Zheng Q. Math Biosci 2002 doi:10.1016/S0025-5564(02)00087-1
-# # Zheng Q. Math Biosci 2005 doi:10.1016/j.mbs.2005.03.011
-# # Zheng Q. Math Biosci 2008 doi:10.1016/j.mbs.2008.09.002
-# # Zheng Q. Genetica 2016 doi:10.1007/s10709-016-9904-3
-# mle.ld <- function(data, e=1, w=1, lag=0, poisson=0, death=0, confint=TRUE, verbose=FALSE) {
-#   n <- max(data)+1
-#   
-#   r <- 1/w
-#   seq <- aux.seq(e = e, w = w, death = death, lag = lag, phi = 0, n = n-1)
-#   # if (lag!=0) {
-#   #   if (w != 1) message("Differential growth rate cannot be used together with phenotypic lag correction.")
-#   #   L <- 2^lag
-#   #   seq <- aux_seq_lag_ext(L, e, n-1)
-#   # } else if (death!=0) {
-#   #   # if (e != 1) message("Partial plating cannot be used together with death correction.")
-#   #   # seq <- aux_seq_death(death, w, n-1)
-#   #   seq <- aux_seq_death(e, w, death/(1-death), n-1)
-#   # } else {
-#   #   seq <- aux.seq(e = e, w = w, n = n-1)
-#   # }
-#   
-#   if (length(seq)<2) {if (verbose) message("Failed to get the sequence"); return(NA)}
-#   
-#   # mg1 <- m_approx(data, e*w)
-#   # mg2 <- m_approx((min(data)+1), e*w)
-#   # if (w!=1) {mg3 <- ifelse(w<1, m_approx(data, e)*(1.2*log(r)+1.2), m_approx(data, e)*(1.12*r^2-0.14*r+0.02))} else {mg3 <- NA}
-#   # if (w!=1) {mg4 <- ifelse(w<1, m_approx((min(data)+1), e)*(1.2*log(r)+1.2), m_approx((min(data)+1), e)*(1.12*r^2-0.14*r+0.02))} else {mg4 <- NA}
-#   # if (poisson!=0) {data2 <- data-poisson; data2[which(data2<0)] <- 0; mg5 <- m_approx(data2, e)} else {mg5 <- NA}
-#   # mg <- as.vector(na.exclude(c(mg5, mg5*0.5, mg1, mg1*0.5, mg2, mg2*0.5, mg3, mg3*0.5, mg4, mg4*0.5)))
-#   # mg <- mg[mg<1e6]
-#   # mg <- mg[mg>0]
-#   mg <- m_guess(data = data, e = e, w = w, lag = lag, death = death, poisson = poisson)
-#   mg <- c(mg, 0.5*mg, 0.7*mg, 1.3*mg, 0.1*mg, 0.001, 1)
-#   # print(mg)
-#   m1 <- -1
-#   
-#   for (value in mg) {
-#     if (m1>0) {break}
-#     m0 <- value
-#     iter <- 0
-#     repeat {
-#       iter <- iter+1
-#       if (iter > 30) {if (verbose) message("m: reached iteration limit"); m1 <- -1; break}
-#       score.fisher.ratio <- score_fisher_ratio(m0, seq, n, data, poisson = poisson)
-#       # stop()
-#       if (is.finite(score.fisher.ratio)==FALSE) {if (verbose) message("m: non-numeric value encountered"); m1 <- -1; break}
-#       m1 <- m0+score.fisher.ratio
-#       if (m1 <= 0) {m1 <- -1; break}
-#       if(abs(score.fisher.ratio)/m0 < 1e-6) {break} else {m0 <- m1}
-#     }
-#   }
-#   # MPFR
-#   for (value in mg) {
-#     if (m1>0) {break}
-#     m0 <- value
-#     iter <- 0
-#     repeat {
-#       iter <- iter+1
-#       if (iter > 30) {if (verbose) message("m: reached iteration limit"); m1 <- -1; break}
-#       score.fisher.ratio <- score_fisher_ratio(m0, seq, n, data, poisson = poisson)
-#       if (is.finite(score.fisher.ratio)==FALSE) {score.fisher.ratio <- score_fisher_ratio_boost(m0, seq, n, data, xpoisson = poisson)}
-#       if (is.finite(score.fisher.ratio)==FALSE) {if (verbose) message("m: non-numeric value encountered"); m1 <- -1; break}
-#       m1 <- m0+score.fisher.ratio
-#       if (m1 <= 0) {m1 <- -1; break}
-#       if(abs(score.fisher.ratio)/m0 < 1e-6) {break} else {m0 <- m1}
-#     }
-#   }
-#   if (m1 < 0) {
-#     if (verbose) message("no success, looping")
-#     mdown <- m_approx(max(1, min(data)), e*w)*0.1
-#     if (w <= 1) {mtop <- m_approx(max(data), e*w)/0.5} 
-#     else {mtop <- m_approx(max(data), e*w)^(1/w)/0.5}
-#     for (i in 0:100) {
-#       if (m1>0) {break}
-#       if (verbose) message(paste("loop", i))
-#       m0 <- mdown+i*(abs(mtop-mdown)/100)
-#       iter <- 0
-#       repeat {
-#         iter <- iter+1
-#         if (iter>30) {if (verbose) message("m: reached iteration limit"); m1 <- -1; break}
-#         score.fisher.ratio <- score_fisher_ratio(m0, seq, n, data, poisson = poisson)
-#         if (is.finite(score.fisher.ratio)==FALSE) {score.fisher.ratio <- score_fisher_ratio_boost(m0, seq, n, data, xpoisson = poisson)}
-#         if (is.finite(score.fisher.ratio)==FALSE) {if (verbose) message("m: non-numeric value encountered"); m1 <- -1; break}
-#         m1 <- m0+score.fisher.ratio
-#         if (m1 <= 0) {m1 <- -1; break}
-#         if(abs(score.fisher.ratio)/m0 < 1e-6) {break} else {m0 <- m1}
-#       }
-#     }
-#   }
-#   
-#   if (m1 < 0) {if (verbose) message("Couldn't estimate m"); if (confint==TRUE) {return(c(NA,NA,NA))} else {return(c(NA))}}
-#   if (confint==FALSE) {
-#     return(m1)
-#   } else {
-#     
-#     # confidence intervals
-#     chi <- qchisq(1-0.05,1)
-#     root.logprobtail <- root_logprobtail(m1, seq, n, data, chi, poisson = poisson)
-#     if (all(is.finite(root.logprobtail))==FALSE) {root.logprobtail <- root_logprobtail_boost(m1, seq, n, data, chi, xpoisson = poisson)}
-#     if (all(is.finite(root.logprobtail))==FALSE) {if (verbose) message("Couldn't set the boundaries for CI"); return(c(m1,NA,NA))}
-#     root <- root.logprobtail[1]
-#     logprobtail <- root.logprobtail[2]
-#     
-#     # lower interval
-#     mg.low <- as.vector(na.exclude(c(m1-0.5*root, m1-0.9*root, (m1-0.5*root)*0.5)))
-#     m1.low <- -1
-#     for (value in mg.low) {
-#       if (m1.low>0) {break}
-#       m0.low <- value
-#       iter <- 0
-#       repeat {
-#         iter <- iter+1
-#         if (iter>30) {if (verbose) message("m_low: reached iteration limit"); m1.low <- -1; break}
-#         score.fisher.ratio.low <- log_score_ratio(m0.low, seq, n, data, logprobtail, poisson = poisson)
-#         if (is.finite(score.fisher.ratio.low)==FALSE) {if (verbose) message("m_low: non-numeric value encountered"); m1.low <- -1; break}
-#         m1.low <- m0.low-score.fisher.ratio.low
-#         if (m1.low <= 0) {m1.low <- -1; break}
-#         if(abs(score.fisher.ratio.low)/m0.low < 1e-6) {if(m1.low>m1) {m1.low <- -1; break} else {break}} else {m0.low <- m1.low}
-#       }
-#     }
-#     # MPFR
-#     for (value in mg.low) {
-#       if (m1.low>0) {break}
-#       m0.low <- value
-#       iter <- 0
-#       repeat {
-#         iter <- iter+1
-#         if (iter>30) {if (verbose) message("m_low: reached iteration limit"); m1.low <- -1; break}
-#         score.fisher.ratio.low <- log_score_ratio(m0.low, seq, n, data, logprobtail, poisson = poisson)
-#         if (is.finite(score.fisher.ratio.low)==FALSE) {score.fisher.ratio.low <- log_score_ratio_boost(m0.low, seq, n, data, logprobtail, xpoisson = poisson)}
-#         if (is.finite(score.fisher.ratio.low)==FALSE) {if (verbose) message("m_low: non-numeric value encountered"); m1.low <- -1; break}
-#         m1.low <- m0.low-score.fisher.ratio.low
-#         if (m1.low <= 0) {m1.low <- -1; break}
-#         if(abs(score.fisher.ratio.low)/m0.low < 1e-6) {if(m1.low>m1) {m1.low <- -1; break} else {break}} else {m0.low <- m1.low}
-#       }
-#     }
-#     if (m1.low < 0) {
-#       for (i in 0:100) {
-#         if (m1.low>0) {break}
-#         if (verbose) message(paste("loop", i))
-#         m0.low <- (1+i)*m1*0.01
-#         iter <- 0
-#         repeat {
-#           iter <- iter+1
-#           if (iter>30) {if (verbose) message("m_low: reached iteration limit"); m1.low <- -1; break}
-#           score.fisher.ratio.low <- log_score_ratio(m0.low, seq, n, data, logprobtail, poisson = poisson)
-#           if (is.finite(score.fisher.ratio.low)==FALSE) {score.fisher.ratio.low <- log_score_ratio_boost(m0.low, seq, n, data, logprobtail, xpoisson = poisson)}
-#           if (is.finite(score.fisher.ratio.low)==FALSE) {if (verbose) message("m: non-numeric value encountered"); m1.low <- -1; break}
-#           m1.low <- m0.low-score.fisher.ratio.low
-#           if (m1.low <= 0) {m1.low <- -1; break}
-#           if(abs(score.fisher.ratio.low)/m0.low < 1e-6) {if(m1.low>m1) {m1.low <- -1; break} else {break}} else {m0.low <- m1.low}
-#         }
-#       }
-#     }
-#     if (m1.low < 0) {if (verbose) message("Couldn't estimate m_low"); m1.low <- NA}
-#     
-#     # upper interval
-#     mg.up <- as.vector(na.exclude(c(m1+0.5*root, m1+0.9*root, (m1+0.5*root)*0.5)))
-#     m1.up <- -1
-#     for (value in mg.up) {
-#       if (m1.up>0) {break}
-#       m0.up <- value
-#       iter <- 0
-#       repeat {
-#         iter <- iter+1
-#         if (iter>30) {if (verbose) message("m_up: reached iteration limit"); m1.up <- -1; break}
-#         score.fisher.ratio.up <- log_score_ratio(m0.up, seq, n, data, logprobtail, poisson = poisson)
-#         if (is.finite(score.fisher.ratio.up)==FALSE) {if (verbose) message("m_up: non-numeric value encountered"); m1.up <- -1; break}
-#         m1.up <- m0.up-score.fisher.ratio.up
-#         if (m1.up <= 0) {m1.up <- -1; break}
-#         if(abs(score.fisher.ratio.up)/m0.up < 1e-6) {if(m1.up<m1) {m1.up <- -1; break} else {break}} else {m0.up <- m1.up}
-#       }
-#     }
-#     # MPFR
-#     for (value in mg.up) {
-#       if (m1.up>0) {break}
-#       m0.up <- value
-#       iter <- 0
-#       repeat {
-#         iter <- iter+1
-#         if (iter>30) {if (verbose) message("m_up: reached iteration limit"); m1.up <- -1; break}
-#         score.fisher.ratio.up <- log_score_ratio(m0.up, seq, n, data, logprobtail, poisson = poisson)
-#         if (is.finite(score.fisher.ratio.up)==FALSE) {score.fisher.ratio.up <- log_score_ratio_boost(m0.up, seq, n, data, logprobtail, xpoisson = poisson)}
-#         if (is.finite(score.fisher.ratio.up)==FALSE) {if (verbose) message("m_up: non-numeric value encountered"); m1.up <- -1; break}
-#         m1.up <- m0.up-score.fisher.ratio.up
-#         if (m1.up <= 0) {m1.up <- -1; break}
-#         if(abs(score.fisher.ratio.up)/m0.up < 1e-6) {if(m1.up<m1) {m1.up <- -1; break} else {break}} else {m0.up <- m1.up}
-#       }
-#     }
-#     if (m1.up < 0) {
-#       for (i in 0:100) {
-#         if (m1.up>0) {break}
-#         if (verbose) message(paste("loop", i))
-#         m0.up <- (1+i/10)*m1
-#         iter <- 0
-#         repeat {
-#           iter <- iter+1
-#           if (iter>30) {if (verbose) message("m_up: reached iteration limit"); m1.up <- -1; break}
-#           score.fisher.ratio.up <- log_score_ratio_ld(m0.up, seq, n, data, logprobtail, poisson = poisson)
-#           if (is.finite(score.fisher.ratio.up)==FALSE) {score.fisher.ratio.up <- log_score_ratio_ld_boost(m0.up, seq, n, data, logprobtail, xpoisson = poisson)}
-#           if (is.finite(score.fisher.ratio.up)==FALSE) {if (verbose) message("m: non-numeric value encountered"); m1.up <- -1; break}
-#           m1.up <- m0.up-score.fisher.ratio.up
-#           if (m1.up <= 0) {m1.up <- -1; break}
-#           if(abs(score.fisher.ratio.up)/m0.up < 1e-6) {if(m1.up<m1) {m1.up <- -1; break} else {break}} else {m0.up <- m1.up}
-#         }
-#       }
-#     }
-#     if (m1.up < 0) {if (verbose) message("Couldn't estimate m_up"); m1.up <- NA}
-#     
-#     return(c(m1, m1.low, m1.up))
-#   }
-#   
-# }
-# 
-# lrt.ld <- function(datax, datay, ex=1, ey=1, wx=1, wy=1, Nx=1, Ny=1, Mx=NA, My=NA) {
-#   
-#   if (is.finite(Mx)==FALSE) {Mx <- mle.ld(datax, ex, wx, confint = FALSE)}
-#   if (is.finite(My)==FALSE) {My <- mle.ld(datay, ey, wy, confint = FALSE)}
-#   if (is.finite(Mx)==FALSE | is.finite(My)==FALSE) {message("Couldn't estimate mutation rates"); return(c(NA,NA))}
-#   
-#   if (Nx>Ny){
-#     data1 <- datax
-#     data2 <- datay
-#     e1 <- ex
-#     e2 <- ey
-#     w1 <- wx
-#     w2 <- wy
-#     N1 <- Nx
-#     N2 <- Ny
-#     M1 <- Mx
-#     M2 <- My
-#   } else {
-#     data1 <- datay
-#     data2 <- datax
-#     e1 <- ey
-#     e2 <- ex
-#     w1 <- wy
-#     w2 <- wx
-#     N1 <- Ny
-#     N2 <- Nx
-#     M1 <- My
-#     M2 <- Mx
-#   }
-#   
-#   n1 <- max(data1)+1
-#   n2 <- max(data2)+1
-#   R <- N2/N1
-#   dataC <- c(data1, data2)
-#   eC <- (e1*length(data1)+e2*length(data2))/(length(dataC))
-#   wC <- (w1*length(data1)+w2*length(data2))/(length(dataC))
-#   seq1 <- aux.seq(e = e1, w = w1, n = n1-1)
-#   seq2 <- aux.seq(e = e2, w = w2, n = n2-1)
-#   
-#   # combined mutation rate
-#   mg1 <- m_approx(dataC, eC*wC)
-#   mg2 <- m_approx((min(dataC)+1), eC*wC)
-#   if (wC!=1) {mg3 <- ifelse(wC<1, m_approx(dataC, eC)*(1.2*log(1/wC)+1.2), m_approx(dataC, eC)*(1.12*(1/wC)^2-0.14*(1/wC)+0.02))} else {mg3 <- NA}
-#   if (wC!=1) {mg4 <- ifelse(wC<1, m_approx((min(dataC)+1), eC)*(1.2*log(1/wC)+1.2), m_approx((min(dataC)+1), eC)*(1.12*(1/wC)^2-0.14*(1/wC)+0.02))} else {mg4 <- NA}
-#   mg <- as.vector(na.exclude(c(mg1, mg1*0.5, mg2, mg2*0.5, mg3, mg3*0.5, mg4, mg4*0.5, min(M1,M2), min(M1,M2)*0.5)))
-#   mg <- mg[mg<1e6]
-#   m1 <- -1
-#   for (value in mg) {
-#     if (m1>0) {break}
-#     m0 <- value
-#     iter <- 0
-#     repeat {
-#       iter <- iter+1
-#       if (iter>30) {message("m_combined: reached iteration limit"); m1 <- -1; break}
-#       score.fisher.ratio <- combo_score_fisher_ratio(m0, n1, n2, R, data1, seq1, data2, seq2)
-#       if (is.finite(score.fisher.ratio)==FALSE) {message("m_combined: non-numeric value encountered"); m1 <- -1; break}
-#       m1 <- m0+score.fisher.ratio
-#       if (m1 <= 0) {m1 <- -1; break}
-#       if (abs(score.fisher.ratio)/m0 < 1e-6) {break} else {m0 <- m1}
-#     }
-#   }
-#   # MPFR
-#   for (value in mg) {
-#     if (m1>0) {break}
-#     m0 <- value
-#     iter <- 0
-#     repeat {
-#       iter <- iter+1
-#       if (iter>30) {message("m_combined: reached iteration limit"); m1 <- -1; break}
-#       score.fisher.ratio <- combo_score_fisher_ratio(m0, n1, n2, R, data1, seq1, data2, seq2)
-#       if (is.finite(score.fisher.ratio)==FALSE) {score.fisher.ratio <- combo_score_fisher_ratio_boost(m0, n1, n2, R, data1, seq1, data2, seq2)}
-#       if (is.finite(score.fisher.ratio)==FALSE) {message("m_combined: non-numeric value encountered"); m1 <- -1; break}
-#       m1 <- m0+score.fisher.ratio
-#       if (m1 <= 0) {m1 <- -1; break}
-#       if (abs(score.fisher.ratio)/m0 < 1e-6) {break} else {m0 <- m1}
-#     }
-#   }
-#   if (m1<0) {
-#     for (i in 0:100) {
-#       if (m1>0) {break}
-#       message(paste("loop", i))
-#       m0 <- min(M1,M2)+i*(abs(M1-M2)/100)
-#       iter <- 0
-#       repeat {
-#         iter <- iter+1
-#         if (iter>30) {message("m_combined: reached iteration limit #loop)"); m1 <- -1; break}
-#         score.fisher.ratio <- combo_score_fisher_ratio(m0, n1, n2, R, data1, seq1, data2, seq2)
-#         if (is.finite(score.fisher.ratio)==FALSE) {score.fisher.ratio <- combo_score_fisher_ratio_boost(m0, n1, n2, R, data1, seq1, data2, seq2)}
-#         if (is.finite(score.fisher.ratio)==FALSE) {message("m_combined: non-numeric value encountered #loop)"); m1 <- -1; break}
-#         m1 <- m0+score.fisher.ratio
-#         if (m1 <= 0) {m1 <- -1; break}
-#         if(abs(score.fisher.ratio)/m0 < 1e-6) {break} else {m0 <- m1}
-#       }
-#     }
-#   }
-#   if (m1 < 0) {message("Couldn't estimate combined m"); return(c(NA,NA))}
-#   MC <- m1
-#   
-#   # log likelihood functions
-#   a <- logprob(MC, n1, data1, seq1)
-#   if (is.finite(a)==FALSE) {a <- logprob_boost(MC, n1, data1, seq1)}
-#   b <- logprob(R*MC, n2, data2, seq2)
-#   if (is.finite(b)==FALSE) {b <- logprob_boost(R*MC, n2, data2, seq2)}
-#   c <- logprob(M1, n1, data1, seq1)
-#   if (is.finite(c)==FALSE) {c <- logprob_boost(M1, n1, data1, seq1)}
-#   d <- logprob(M2, n2, data2, seq2)
-#   if (is.finite(d)==FALSE) {d <- logprob_boost(M2, n2, data2, seq2)}
-#   if(!(all(is.finite(c(a,b,c,d))))) {message("loglikelihood: non-numeric value encountered"); return(c(NA, NA))}
-#   l0 <- a+b
-#   l1 <- c+d
-#   chi <- -2*(l0-l1)
-#   pval <- 1-pchisq(chi,1)
-#   effsize <- chi/(-2*l0)
-#   return(c(pval, effsize))
-#   
-# }
-# 
-# ### Calculate MLE, CI, and P value under the Bartlett model ###
-# # Combined functions for B0 (gamma-mixture) distribution indexed by e and cv
-# # based on functions newton.B0 and confint.B0 from rSalvador 1.8
-# # P values can be calculated using Likelihood Ratio Test, using an established framework
-# # simplified and optimised to avoid redundant computations, partial plating is possible in all cases
-# # arbitrary precision arithmetics has been implemented and trial-and-error iterative initial value of m approach is used when necessary to avoid under- and overflow
-# # Zheng Q. Math Biosci 2008 doi:10.1016/j.mbs.2008.09.002
-# # Zheng Q. Statistics (Ber) 2010 doi:10.1080/02331880903236868
-# # Zheng Q. Genetica 2016 doi:10.1007/s10709-016-9904-3
-# mle.b0 <- function(data, e=1, w=1, cv=1e-3, confint=TRUE) {
-#   n <- max(data)+1
-#   k <- 1/cv/cv
-#   
-#   seq <- aux.seq(e = e, w = w, n = n-1)
-#   
-#   # mutants in the culture
-#   mg1 <- m_approx(data, e)
-#   mg2 <- m_approx((min(data)+1), e)
-#   mg <- c(mg1, mg2, mg1*0.5)
-#   m1 <- -1
-#   for (value in mg) {
-#     if (m1>0) {break}
-#     m0 <- value
-#     iter <- 0
-#     repeat {
-#       iter <- iter+1
-#       if (iter > 30) {message("m: reached iteration limit"); m1 <- -1; break}
-#       score.fisher.ratio <- score_fisher_ratio(m0, seq, n, data, k)
-#       # stop()
-#       if (is.finite(score.fisher.ratio)==FALSE) {message("m: non-numeric value encountered"); m1 <- -1; break}
-#       m1 <- m0+score.fisher.ratio
-#       if (m1 <= 0) {m1 <- -1; break}
-#       if(abs(score.fisher.ratio)/m0 < 1e-6) {break} else {m0 <- m1}
-#     }
-#   }
-#   # MPFR
-#   for (value in mg) {
-#     if (m1>0) {break}
-#     m0 <- value
-#     iter <- 0
-#     repeat {
-#       iter <- iter+1
-#       if (iter > 30) {message("m: reached iteration limit"); m1 <- -1; break}
-#       score.fisher.ratio <- score_fisher_ratio(m0, seq, n, data, k)
-#       if (is.finite(score.fisher.ratio)==FALSE) {score.fisher.ratio <- score_fisher_ratio_boost(m0, seq, n, data, k)}
-#       if (is.finite(score.fisher.ratio)==FALSE) {message("m: non-numeric value encountered"); m1 <- -1; break}
-#       m1 <- m0+score.fisher.ratio
-#       if (m1 <= 0) {m1 <- -1; break}
-#       if(abs(score.fisher.ratio)/m0 < 1e-6) {break} else {m0 <- m1}
-#     }
-#   }
-#   if (m1 < 0) {
-#     message("no success, looping")
-#     mdown <- jones.median(max(1, min(data)), e)*0.5
-#     mtop <- jones.median(max(data), e)/0.5
-#     for (i in 0:100) {
-#       if (m1>0) {break}
-#       message(paste("loop", i))
-#       m0 <- mdown+i*(abs(mtop-mdown)/100)
-#       iter <- 0
-#       repeat {
-#         iter <- iter+1
-#         if (iter>30) {message("m: reached iteration limit"); m1 <- -1; break}
-#         score.fisher.ratio <- score_fisher_ratio(m0, seq, n, data, k)
-#         if (is.finite(score.fisher.ratio)==FALSE) {score.fisher.ratio <- score_fisher_ratio_boost(m0, seq, n, data, k)}
-#         if (is.finite(score.fisher.ratio)==FALSE) {message("m: non-numeric value encountered"); m1 <- -1; break}
-#         m1 <- m0+score.fisher.ratio
-#         if (m1 <= 0) {m1 <- -1; break}
-#         if(abs(score.fisher.ratio)/m0 < 1e-6) {break} else {m0 <- m1}
-#       }
-#     }
-#   }
-#   if (m1 < 0) {message("Couldn't estimate m"); if (confint==TRUE) {return(c(NA,NA,NA))} else {return(c(NA))}}
-#   if (confint==FALSE) {
-#     return(m1)
-#   } else {
-#     
-#     # confidence intervals
-#     chi <- qchisq(1-0.05,1)
-#     root.logprobtail <- root_logprobtail(m1, seq, n, data, chi, k)
-#     if (all(is.finite(root.logprobtail))==FALSE) {root.logprobtail <- root_logprobtail_boost(m1, seq, n, data, chi, k)}
-#     if (all(is.finite(root.logprobtail))==FALSE) {message("Couldn't set the boundaries for CI"); return(c(m1,NA,NA))}
-#     root <- root.logprobtail[1]
-#     logprobtail <- root.logprobtail[2]
-#     
-#     # lower interval
-#     mg.low <- as.vector(na.exclude(c(m1-0.5*root, m1-0.9*root, (m1-0.5*root)*0.5)))
-#     m1.low <- -1
-#     for (value in mg.low) {
-#       if (m1.low>0) {break}
-#       m0.low <- value
-#       iter <- 0
-#       repeat {
-#         iter <- iter+1
-#         if (iter>30) {message("m_low: reached iteration limit"); m1.low <- -1; break}
-#         score.fisher.ratio.low <- log_score_ratio(m0.low, seq, n, data, logprobtail, k)
-#         if (is.finite(score.fisher.ratio.low)==FALSE) {message("m_low: non-numeric value encountered"); m1.low <- -1; break}
-#         m1.low <- m0.low-score.fisher.ratio.low
-#         if (m1.low <= 0) {m1.low <- -1; break}
-#         if(abs(score.fisher.ratio.low)/m0.low < 1e-6) {if(m1.low>m1) {m1.low <- -1; break} else {break}} else {m0.low <- m1.low}
-#       }
-#     }
-#     # MPFR
-#     for (value in mg.low) {
-#       if (m1.low>0) {break}
-#       m0.low <- value
-#       iter <- 0
-#       repeat {
-#         iter <- iter+1
-#         if (iter>30) {message("m_low: reached iteration limit"); m1.low <- -1; break}
-#         score.fisher.ratio.low <- log_score_ratio(m0.low, seq, n, data, logprobtail, k)
-#         if (is.finite(score.fisher.ratio.low)==FALSE) {score.fisher.ratio.low <- log_score_ratio_boost(m0.low, seq, n, data, logprobtail, k)}
-#         if (is.finite(score.fisher.ratio.low)==FALSE) {message("m_low: non-numeric value encountered"); m1.low <- -1; break}
-#         m1.low <- m0.low-score.fisher.ratio.low
-#         if (m1.low <= 0) {m1.low <- -1; break}
-#         if(abs(score.fisher.ratio.low)/m0.low < 1e-6) {if(m1.low>m1) {m1.low <- -1; break} else {break}} else {m0.low <- m1.low}
-#       }
-#     }
-#     if (m1.low < 0) {
-#       for (i in 0:100) {
-#         if (m1.low>0) {break}
-#         message(paste("loop", i))
-#         m0.low <- (1+i)*m1*0.01/(ifelse(cv<=1, 1, log(cv)))
-#         iter <- 0
-#         repeat {
-#           iter <- iter+1
-#           if (iter>30) {message("m_low: reached iteration limit"); m1.low <- -1; break}
-#           score.fisher.ratio.low <- log_score_ratio(m0.low, seq, n, data, logprobtail, k)
-#           if (is.finite(score.fisher.ratio.low)==FALSE) {score.fisher.ratio.low <- log_score_ratio_boost(m0.low, seq, n, data, logprobtail, k)}
-#           if (is.finite(score.fisher.ratio.low)==FALSE) {message("m_low: non-numeric value encountered"); m1.low <- -1; break}
-#           m1.low <- m0.low-score.fisher.ratio.low
-#           if (m1.low <= 0) {m1.low <- -1; break}
-#           if(abs(score.fisher.ratio.low)/m0.low < 1e-6) {if(m1.low>m1) {m1.low <- -1; break} else {break}} else {m0.low <- m1.low}
-#         }
-#       }
-#     }
-#     if (m1.low < 0) {message("Couldn't estimate m_low"); m1.low <- NA}
-#     
-#     # upper interval
-#     mg.up <- as.vector(na.exclude(c(m1+0.5*root, m1+0.9*root, (m1+0.5*root)*0.5, (m1+0.5*root)/0.5)))
-#     m1.up <- -1
-#     for (value in mg.up) {
-#       if (m1.up>0) {break}
-#       m0.up <- value
-#       iter <- 0
-#       repeat {
-#         iter <- iter+1
-#         if (iter>30) {message("m_up: reached iteration limit"); m1.up <- -1; break}
-#         score.fisher.ratio.up <- log_score_ratio(m0.up, seq, n, data, logprobtail, k)
-#         if (is.finite(score.fisher.ratio.up)==FALSE) {message("m_up: non-numeric value encountered"); m1.up <- -1; break}
-#         m1.up <- m0.up-score.fisher.ratio.up
-#         if (m1.up <= 0) {m1.up <- -1; break}
-#         if(abs(score.fisher.ratio.up)/m0.up < 1e-6) {if(m1.up<m1) {m1.up <- -1; break} else {break}} else {m0.up <- m1.up}
-#       }
-#     }
-#     # MPFR
-#     for (value in mg.up) {
-#       if (m1.up>0) {break}
-#       m0.up <- value
-#       iter <- 0
-#       repeat {
-#         iter <- iter+1
-#         if (iter>30) {message("m_up: reached iteration limit"); m1.up <- -1; break}
-#         score.fisher.ratio.up <- log_score_ratio(m0.up, seq, n, data, logprobtail, k)
-#         if (is.finite(score.fisher.ratio.up)==FALSE) {score.fisher.ratio.up <- log_score_ratio_boost(m0.up, seq, n, data, logprobtail, k)}
-#         if (is.finite(score.fisher.ratio.up)==FALSE) {message("m_up: non-numeric value encountered"); m1.up <- -1; break}
-#         m1.up <- m0.up-score.fisher.ratio.up
-#         if (m1.up <= 0) {m1.up <- -1; break}
-#         if(abs(score.fisher.ratio.up)/m0.up < 1e-6) {if(m1.up<m1) {m1.up <- -1; break} else {break}} else {m0.up <- m1.up}
-#       }
-#     }
-#     if (m1.up < 0) {
-#       for (i in 0:100) {
-#         if (m1.up>0) {break}
-#         message(paste("loop", i))
-#         m0.up <- (1+i)*m1*exp(cv)*ifelse(cv<=1, 0.1, 1)
-#         iter <- 0
-#         repeat {
-#           iter <- iter+1
-#           if (iter>30) {message("m_up: reached iteration limit"); m1.up <- -1; break}
-#           score.fisher.ratio.up <- log_score_ratio(m0.up, seq, n, data, logprobtail, k)
-#           if (is.finite(score.fisher.ratio.up)==FALSE) {score.fisher.ratio.up <- log_score_ratio_boost(m0.up, seq, n, data, logprobtail, k)}
-#           if (is.finite(score.fisher.ratio.up)==FALSE) {message("m_up: non-numeric value encountered"); m1.up <- -1; break}
-#           m1.up <- m0.up-score.fisher.ratio.up
-#           if (m1.up <= 0) {m1.up <- -1; break}
-#           if(abs(score.fisher.ratio.up)/m0.up < 1e-6) {if(m1.up<m1) {m1.up <- -1; break} else {break}} else {m0.up <- m1.up}
-#         }
-#       }
-#     }
-#     if (m1.up < 0) {message("Couldn't estimate m_up"); m1.up <- NA}
-#     
-#     return(c(m1, m1.low, m1.up))
-#   }
-# }
-# 
-# lrt.b0 <- function(datax, datay, ex=1, ey=1, cvx=1e-3, cvy=1e-3, Nx=1, Ny=1, Mx=NA, My=NA) {
-#   
-#   if (is.finite(Mx)==FALSE) {Mx <- mle.b0(data = datax, e = ex, cv = cvx, confint = FALSE)} else {Mx <- Mx}
-#   if (is.finite(My)==FALSE) {My <- mle.b0(data = datay, e = ey, cv = cvy, confint = FALSE)} else {My <- My}
-#   if (is.finite(Mx)==FALSE | is.finite(My)==FALSE) {message("Couldn't estimate mutation rates"); return(c(NA,NA))}
-#   
-#   if (Nx>=Ny){
-#     data1 <- datax
-#     data2 <- datay
-#     e1 <- ex
-#     e2 <- ey
-#     cv1 <- cvx
-#     cv2 <- cvy
-#     N1 <- Nx
-#     N2 <- Ny
-#     M1 <- Mx
-#     M2 <- My
-#   } else {
-#     data1 <- datay
-#     data2 <- datax
-#     e1 <- ey
-#     e2 <- ex
-#     cv1 <- cvy
-#     cv2 <- cvx
-#     N1 <- Ny
-#     N2 <- Nx
-#     M1 <- My
-#     M2 <- Mx
-#   }
-#   
-#   # mutation rates
-#   n1 <- max(data1)+1
-#   n2 <- max(data2)+1
-#   dataC <- c(data1, data2)
-#   eC <- (e1*length(data1)+e2*length(data2))/(length(dataC))
-#   k1 <- 1/cv1/cv1
-#   k2 <- 1/cv2/cv2
-#   R <- N2/N1
-#   
-#   seq1 <- aux.seq(e = e1, w = 1, n = n1-1)
-#   seq2 <- aux.seq(e = e2, w = 1, n = n2-1)
-#   
-#   # combined mutation rate
-#   mg1 <- m_approx(dataC, eC)
-#   mg2 <- m_approx((min(dataC)+1), eC)
-#   mg <- as.vector(na.exclude(c(mg1, mg2, mg1*0.5, mg2*0.5, min(M1, M2), min(M1, M2)*0.5, min(M1,M2)/R)))
-#   m1 <- -1
-#   for (value in mg) {
-#     if (m1>0) {break}
-#     m0 <- value
-#     iter <- 0
-#     repeat {
-#       iter <- iter+1
-#       if (iter>30) {message("m_combined: reached iteration limit"); m1 <- -1; break}
-#       score.fisher.ratio <- combo_score_fisher_ratio(m0, n1, n2, R, data1, seq1, data2, seq2, k1, k2)
-#       if (is.finite(score.fisher.ratio)==FALSE) {message("m_combined: non-numeric value encountered"); m1 <- -1; break}
-#       m1 <- m0+score.fisher.ratio
-#       if (m1 <= 0) {m1 <- -1; break}
-#       if (abs(score.fisher.ratio)/m0 < 1e-6) {break} else {m0 <- m1}
-#     }
-#   }
-#   # MPFR
-#   for (value in mg) {
-#     if (m1>0) {break}
-#     m0 <- value
-#     iter <- 0
-#     repeat {
-#       iter <- iter+1
-#       if (iter>30) {message("m_combined: reached iteration limit"); m1 <- -1; break}
-#       score.fisher.ratio <- combo_score_fisher_ratio(m0, n1, n2, R, data1, seq1, data2, seq2, k1, k2)
-#       if (is.finite(score.fisher.ratio)==FALSE) {score.fisher.ratio <- combo_score_fisher_ratio_boost(m0, n1, n2, R, data1, seq1, data2, seq2, k1, k2)}
-#       if (is.finite(score.fisher.ratio)==FALSE) {message("m_combined: non-numeric value encountered"); m1 <- -1; break}
-#       m1 <- m0+score.fisher.ratio
-#       if (m1 <= 0) {m1 <- -1; break}
-#       if (abs(score.fisher.ratio)/m0 < 1e-6) {break} else {m0 <- m1}
-#     }
-#   }
-#   if (m1<0) {
-#     for (i in 0:100) {
-#       if (m1>0) {break}
-#       message(paste("loop ", i))
-#       m0 <- min(M1,M2)+i*(abs(M1-M2)/100)
-#       iter <- 0
-#       repeat {
-#         iter <- iter+1
-#         if (iter>30) {message("m_combined: reached iteration limit"); m1 <- -1; break}
-#         score.fisher.ratio <- combo_score_fisher_ratio(m0, n1, n2, R, data1, seq1, data2, seq2, k1, k2)
-#         if (is.finite(score.fisher.ratio)==FALSE) {score.fisher.ratio <- combo_score_fisher_ratio_boost(m0, n1, n2, R, data1, seq1, data2, seq2, k1, k2)}
-#         if (is.finite(score.fisher.ratio)==FALSE) {message("m_combined: non-numeric value encountered"); m1 <- -1; break}
-#         m1 <- m0+score.fisher.ratio
-#         if (m1 <= 0) {m1 <- -1; break}
-#         if(abs(score.fisher.ratio)/m0 < 1e-6) {break} else {m0 <- m1}
-#       }
-#     }
-#   }
-#   if (m1 < 0) {message("m_combined: no convergence (negative estimate)"); return(c(NA,NA))}
-#   
-#   MC <- m1
-#   
-#   # log likelihood functions
-#   la <- logprob(MC, n1, data1, seq1, k1)
-#   if (is.finite(la)==FALSE) {la <- logprob_boost(MC, n1, data1, seq1, k1)}
-#   lb <- logprob(R*MC, n2, data2, seq2, k2)
-#   if (is.finite(lb)==FALSE) {lb <- logprob_boost(R*MC, n2, data2, seq2, k2)}
-#   lc <- logprob(M1, n1, data1, seq1, k1)
-#   if (is.finite(lc)==FALSE) {lc <- logprob_boost(M1, n1, data1, seq1, k1)}
-#   ld <- logprob(M2, n2, data2, seq2, k2)
-#   if (is.finite(ld)==FALSE) {ld <- logprob_boost(M2, n2, data2, seq2, k2)}
-#   if(!(all(is.finite(c(la,lb,lc,ld))))) {message("loglikelihood: non-numeric value encountered"); return(c(NA, NA))}
-#   l0 <- la+lb
-#   l1 <- lc+ld
-#   chi <- -2*(l0-l1)
-#   pval <- 1-pchisq(chi,1)
-#   effsize <- chi/(-2*l0)
-#   return(c(pval, effsize))
-# }
-
-# lrt.joint.lag.3 <- function(data, e=1, plot.CR=TRUE, resolution=15, verbose=FALSE, statistic=FALSE, bartlett=FALSE) {
-#   
-#   n <- max(data) + 1
-#   seq <- aux.seq(e = e, w = 1, n = n - 1)
-#   
-#   # checking if the model is single-parameter only
-#   if (verbose) {message("Finding MLE under LC model")}
-#   m.one <- mle.ld(data = data, e = e)
-#   logprob.one <- logprob(m = m.one[1], len = n, data = data, seq = aux.seq(e = e, w = 1, n = n - 1), k = 0, poisson = 0)
-#   # m.minus1 <- suppressMessages(mle.ld(data = data, e = e, lag = -1, confint = FALSE))
-#   # logprob.minus1 <- logprob_joint(m = m.minus1, e = e, param = 2^-1, data = data, len = n, option = "lag")
-#   # m.minus0.999 <- suppressMessages(mle.ld(data = data, e = e, lag = -0.999, confint = FALSE))
-#   # logprob.minus0.999 <- logprob_joint(m = m.minus0.999, e = e, param = 2^-0.999, data = data, len = n, option = "lag")
-#   # m.01 <- suppressMessages(mle.ld(data = data, e = e, lag = 0.015, confint = FALSE))
-#   # logprob.01 <- logprob_joint(m = m.01, e = e, param = sqrt(2^0.015-1), data = data, len = n, option = "lag")
-#   # if (!is.finite(logprob.01)) {logprob.01 <- logprob_joint_boost(xm = m.01, xe = e, xparam = sqrt(2^0.015-1), data = data, len = n, option = "lag")}
-#   
-#   # print(c(logprob.minus1, logprob.minus0.999, logprob.one, logprob.01))
-#   # stop()
-#   
-#   # if (logprob.one > logprob.01) {
-#   # if (logprob.minus1 > logprob.minus0.999) {
-#   # lag.max <- 0
-#   # L.max <- 1
-#   # m.max <- m.one[1]
-#   # } else {
-#   t1 <- Sys.time()
-#   # finding joint MLEs using Newton-Raphson method
-#   if (verbose) {message("Finding MLE under LC-lag model")}
-#   mg1 <- m.one[1]
-#   mg2 <- m_approx(data, e)
-#   mg3 <- m_approx((min(data) + 1), e)
-#   mg <- as.vector(na.exclude(c(as.vector(outer(c(mg1, mg2, mg3), c(1, 0.7, 0.5, 0.3, 0.1, 1.3, 1.5, 1.7, 2, 2.5, 3, 3.5, 4, 4.5, 5))), 0.1, 1)))
-#   mg <- mg[mg < 1e6]
-#   
-#   # Lg <- c(0.5, 0.8, 1.0001, 1.01, seq(1.1, 5, length.out=10))
-#   Lg <- c(1.0001, 1.01, seq(1.1, 5, length.out=10))
-#   Lg <- sqrt(Lg-1)
-#   
-#   matrix1 <- c(-1, -1)
-#   matrix0 <- c(0, 0)
-#   
-#   for (value.L in Lg) {
-#     # print(value.L)
-#     if (all((matrix1) > 0)) {break}
-#     for (value.m in mg) {
-#       # print(value.m)
-#       if (all((matrix1) > 0)) {break}
-#       matrix0[2] <- value.L
-#       matrix0[1] <- value.m
-#       iter <- 0
-#       repeat {
-#         iter <- iter + 1
-#         if (iter > 30) {if (verbose) {message("joint lag: reached iteration limit")}; matrix1 <- c(-1, -1); break}
-#         m0 <- matrix0[1]
-#         L0 <- matrix0[2]
-#         product <- score_fisher_product_joint(m = m0, e = e, param = L0^2+1, data = data, len = n, option = "lag")
-#         # product <- score_fisher_product_joint(m = m0, e = e, param = L0, data = data, len = n, option = "lag")
-#         product <- product[1:2]
-#         # if (any(is.finite(product) == FALSE)) {if (verbose) {message("joint lag: boost")}; product <- score_fisher_product_joint_boost(m0, e, L0, data, n); product <- product[1:2]}
-#         if (any(is.finite(product) == FALSE)) {if (verbose) {message("joint lag: non-numeric value encountered")}; matrix1 <- c(-1,-1); break}
-#         product <- product[1:2]
-#         matrix1 = matrix0 + product
-#         # if (matrix1[1] <= 0 | matrix1[2] <= 1 | any(matrix1 > 1e6)) {if (verbose) {message("joint lag: value oob")}; matrix1 <- c(-1, -1); break}
-#         if (any(matrix1[1] <= 0) | any(matrix1 > 1e6)) {if (verbose) {message("joint lag: value oob")}; matrix1 <- c(-1, -1); break}
-#         # if (matrix1[1] <= 0 | matrix1[2] < 0.5 | any(matrix1 > 1e6)) {if (verbose) {message("joint lag: value oob")}; matrix1 <- c(-1, -1); break}
-#         if (sqrt(sum((product)^2 / sum(matrix0^2))) < 1e-6) {break} else {matrix0 <- matrix1}
-#       }
-#     }
-#   }
-#   
-#   # if (any(matrix1 < 0)) {
-#   #   mg.ld <- seq(0.5*(min(data) + 1), max(data), length.out = 50)
-#   #   if (e != 1) mg.ld <- c(mg.ld/e, mg.ld)
-#   #   for (value.p in mg.p) {
-#   #     if (all((matrix1) > 0)) {break}
-#   #     for (value.ld in mg.ld) {
-#   #       if (all((matrix1) > 0)) {break}
-#   #       matrix0[2] <- value.p
-#   #       matrix0[1] <- value.ld
-#   #       iter <- 0
-#   #       repeat {
-#   #         iter <- iter + 1
-#   #         if (iter > 40) {if (verbose) {message("joint residual: reached iteration limit")}; matrix1 <- c(-1, -1); break}
-#   #         m0.ld <- matrix0[1]
-#   #         m0.p <- matrix0[2]
-#   #         product <- score_fisher_product_joint(m0.ld, e, m0.p, data, n, "mixed")
-#   #         product <- product[1:2]
-#   #         if (any(is.finite(product) == FALSE)) {message(if (verbose) "joint residual: boost"); product <- score_fisher_product_joint_boost(m0.ld, e, m0.p, data, n, "mixed")}
-#   #         if (any(is.finite(product) == FALSE)) {if (verbose) {message("joint residual: non-numeric value encountered")}; matrix1 <- c(-1,-1); break}
-#   #         product <- product[1:2]
-#   #         matrix1 = matrix0 + product
-#   #         if (any(matrix1 <= 0)) {if (verbose) {message("joint residual: value oob")}; matrix1 <- c(-1, -1); break}
-#   #         if (sqrt(sum((product)^2 / sum(matrix0^2))) < 1e-4) {break} else {matrix0 <- matrix1}
-#   #       }
-#   #     }
-#   #   }
-#   # }
-#   if (any(matrix1 < 0)) {
-#     if (verbose) {message("Couldn't estimate joint estimates of m and residual m")}
-#     if (plot.CR==FALSE) {
-#       return(list("pval" = NA, "mutations" = m.one[1], "adj_mutations" = NA, "phenotypic_lag" = NA))
-#     } else {
-#       return(list("pval" = NA, "mutations" = m.one[1], "adj_mutations" = NA, "phenotypic_lag" = NA, "plot" = NA))
-#     }
-#   } else {
-#     L.max <- matrix1[2]
-#     lag.max <- log(L.max^2+1, 2)
-#     # lag.max <- log(L.max, 2)
-#     m.max <- matrix1[1]
-#   }
-#   # }
-#   
-#   # t2 <- Sys.time()
-#   # # print(eigen(matrix(c(J11, J12, J12, J22), ncol=2))$value)
-#   # # print(optim_m_param_joint(current_m = sqrt(m_guess(data = data, e = e, w = 1, lag = 0, death = 0, poisson = 1)[1]), lower_m = sqrt(m.one[1]), upper_m = sqrt(m.one[1]/10),
-#   # # current_param = 1, lower_param = sqrt(1e-18), upper_param = sqrt(mean(data)), e = e, data = data, len = n, option = "mixed", verbose = verbose))
-#   # ans1 <- (optim_m_param_joint(current_m = sqrt(m_guess(data = data, e = e, w = 1, lag = 1, death = 0, poisson = 0)[1]), lower_m = sqrt(m.one[1]), upper_m = sqrt(m_guess(data = data, e = e, w = 1, lag = 3, death = 0, poisson = 0)[1]),
-#   #                              current_param = 1, lower_param = sqrt(1e-18), upper_param = sqrt(3), e = e, data = data, len = n, option = "lag", verbose = verbose))
-#   # t3 <- Sys.time()
-#   # ans2 <- (optim_m_param_joint_2(current_m = sqrt(m_guess(data = data, e = e, w = 1, lag = 0.1, death = 0, poisson = 0)[1]), current_param = sqrt(0.1), e = e, data = data, len = n, option = "lag", verbose = verbose))
-#   # t4 <- Sys.time()
-#   # print(c(m.max, lag.max))
-#   # print(ans1)
-#   # print(ans2)
-#   # print(t2-t1)
-#   # print(t3-t2)
-#   # print(t4-t3)
-#   # # stop()
-#   # return(0)
-#   
-#   if (verbose) {message("Calculating p value")}
-#   logprob.max <- logprob_joint(m = m.max, e = e, param = L.max^2+1, data = data, len = n, option = "lag")
-#   
-#   # pval <- 1 - pchisq(-2*(logprob.one - logprob.max),1)
-#   if (m.max==m.one[1]) {
-#     pval <- 0.5
-#     if (statistic==TRUE) pval <- c(pval, 0)
-#   } else {
-#     lambda <- -2*(logprob.one - logprob.max)
-#     if (bartlett==TRUE) {
-#       X.95 <- which(cumsum(prob_joint(m = m.max, e = e, param = 1, len = 100000, option = "lag"))>0.999)[1]
-#       if (is.na(X.95)) X.95 <- 100000
-#       lambda.star <- lapply(1:200, function(i) {lrt.joint.lag(floor(simu.cultures.lag(length(data), m.max*1e-9, 1, 1, 1, 1e9, trim = X.95)*e), e, plot.CR = F, verbose = F, statistic = T, bartlett = F)[[1]][2]})
-#       # lambda.star <- lapply(1:200, function(i) {lrt.joint.lag(floor(simu.cultures.lag(length(data), m.max*1e-9, 1, 1, 1, 1e9)*e), e, plot.CR = F, verbose = F, statistic = T, bartlett = F)[[1]][2]})
-#       lambda.star <- unlist(lambda.star)
-#       while (any(lambda.star==0)) {
-#         lambda.star[which(lambda.star==0)] <- lrt.joint.lag(floor(simu.cultures.lag(length(data), m.max*1e-9, 1, 1, 1, 1e9, trim = X.95)*e), e, plot.CR = F, verbose = F, statistic = T, bartlett = F)[[1]][2]
-#       }
-#       lambda <- lambda/mean(unlist(lambda.star))
-#     }
-#     # lrt.stat <- -2*(logprob.one - logprob.max)
-#     pval <- 1 - emdbook::pchibarsq(lambda,1)
-#     if (statistic==TRUE) pval <- c(pval, lambda)
-#   }
-#   
-#   if (plot.CR==FALSE) {
-#     # if (m.max != m.one[1]) {
-#     #   logprob.95 <- logprob.max-0.5*qchisq(0.95,2)
-#     # } else {
-#     #   logprob.95 <- logprob.max-0.5*emdbook::qchibarsq(0.95,2)
-#     # }
-#     # logprob.true <- logprob_joint(20, e, 2^0, data, n, "lag")
-#     # if (logprob.true>=logprob.95) {confint=1} else {confint=0}
-#     # return(list("pval" = pval, "m_one" = m.one[1], "m_lag" = m.max, "lag" = lag.max, "interval" = confint))
-#     return(list("pval" = pval, "mutations" = m.one[1], "adj_mutations" = m.max, "phenotypic_lag" = lag.max))
-#   } else {
-#     
-#     # plotting confidence region using grid-searching-type algorithm
-#     if (resolution < 10) {resolution <- 10}
-#     # lag.map <- seq(0.1*lag.max, ifelse(lag.max==0, 2, 1.9*lag.max), length.out=resolution)
-#     lag.map <- seq(ifelse(lag.max<=0, -1, 0.1*lag.max), ifelse(lag.max<=0, 2, 1.9*lag.max), length.out=resolution)
-#     m.map <- seq(0.5*m.max, 1.5*m.max, length.out=resolution)
-#     
-#     if (verbose) {message("Creating plot")}
-#     logprob.95 <- logprob.max-0.5*qchisq(0.95,2)
-#     table <- matrix(nrow=resolution, ncol=resolution)
-#     rownames(table) <- m.map
-#     colnames(table) <- lag.map
-#     for (i in 1:resolution) {
-#       for (j in 1:resolution) {
-#         table[i,j] <- logprob_joint(m = m.map[i], e = e, param = 2^lag.map[j], data = data, len = n, option = "lag")
-#       }
-#     }
-#     for (i in 1:3) {
-#       while(!all(table[1,]<logprob.95)) {
-#         if (m.map[1]==0) {break}
-#         m.down <- (1-1/resolution)*m.map[1]
-#         if (m.down<0.01) {m.down <- 0}
-#         m.map <- c(m.down, m.map)
-#         appendix <- mapply(function(x) logprob_joint(m = m.down, e = e, param = 2^lag.map[x], data = data, len = n, option = "lag"), x=1:length(lag.map))
-#         table <- rbind(appendix, table)
-#         rownames(table)[1] <- m.down
-#       }
-#       while(!all(table[length(rownames(table)),]<logprob.95)) {
-#         m.up <- (1+1/resolution)*m.map[length(m.map)]
-#         m.map <- c(m.map, m.up)
-#         appendix <- mapply(function(x) logprob_joint(m = m.up, e = e, param = 2^lag.map[x], data = data, len = n, option = "lag"), x=1:length(lag.map))
-#         table <- rbind(table, appendix)
-#         rownames(table)[length(m.map)] <- m.up
-#       }
-#       while(!all(table[,1]<logprob.95)) {
-#         if (lag.map[1]==0) {break}
-#         lag.down <- (1-1/resolution)*lag.map[1]
-#         if (lag.down<0.01) {lag.down <- 0}
-#         # if (2^(lag.map[1])<=0.5) {break}
-#         # lag.down <- log((1-1/resolution)*2^(lag.map[1]), 2)
-#         # if (2^(lag.down)<=0.5) {lag.down <- -1}
-#         lag.map <- c(lag.down, lag.map)
-#         appendix <- mapply(function(x) logprob_joint(m = m.map[x], e = e, param = 2^lag.down, data = data, len = n, option = "lag"), x=1:length(m.map))
-#         table <- cbind(appendix, table)
-#         colnames(table)[1] <- lag.down
-#       }
-#       while(!all(table[,length(colnames(table))]<logprob.95)) {
-#         lag.up <- (1+1/resolution)*lag.map[length(lag.map)]
-#         lag.map <- c(lag.map, lag.up)
-#         appendix <- mapply(function(x) logprob_joint(m = m.map[x], e = e, param = 2^lag.up, data = data, len = n, option = "lag"), x=1:length(m.map))
-#         table <- cbind(table, appendix)
-#         colnames(table)[length(lag.map)] <- lag.up
-#       }
-#     }
-#     plot <- ggplot2::ggplot(reshape2::melt(table),ggplot2::aes(x=Var1, y=Var2)) + ggplot2::geom_contour(ggplot2::aes(z=value), breaks=logprob.95, colour="blue") + ggplot2::geom_point(ggplot2::aes(x=m.max, y=lag.max), colour="blue")  + ggplot2::geom_point(ggplot2::aes(x=m.one[1], y=0), colour="black") + ggplot2::geom_segment(ggplot2::aes(x = m.one[2], y = 0, xend = m.one[3], yend = 0), colour="black", size=0.25) + ggplot2::labs(x="m", y="lag", title="MLE and 95% confidence region") + ggplot2::theme_bw()
-#     # plotly::plot_ly(z = as.data.frame(table)) %>% add_surface(z=table)
-#     # plotly::plot_ly(type="surface", x=rownames(table), y=colnames(table), z=table)
-#     return(list("pval" = pval, "mutations" = m.one[1], "adj_mutations" = m.max, "phenotypic_lag" = lag.max, "plot" = plot))
-#   }
-# }
-
+#' Calculate profile likelihood confidence intervals for an arbitrary function of mutation rates
+#'
+#' @description Inspired by Zheng 2021, this function calculates MLE and profile likelihood confidence intervals
+#' of an arbitrary function of data, such as fold (X1/X2), subtraction (X1-X2), fold with background
+#' subtraction ((X1-X2)/(X3-X2)), or a user-defined function utilising basic mathematical operations: addition,
+#' subtraction, multiplication or division. Up to 6 datasets can be used.
+#' @param data a list of length 2 to 6 containing numeric vectors with colony counts.
+#' @param e a list or vector of length 2 to 6 (same as data) containing respective values of plating efficiency.
+#' @param w a list or vector of length 2 to 6 (same as data) containing respective values of relative mutant fitness.
+#' @param cv a list or vector of length 2 to 6 (same as data) containing respective values of coefficient of variation.
+#' @param Nt a list or vector of length 2 to 6 (same as data) containing respective values of average number of cells in culture.
+#' @param fun describes the function of mutation rates for which confidence intervals should be calculated. Must be a character
+#' vector of length 1 containing either one of default options ("fold X1/X2", "subtraction X1-X2",
+#' "double fold (X1/X2)/(X3/X4)", "background subtraction fold (X1-X2)/(X3-X2)") or a user-defined function containing
+#' phrases X1, X2, X3, X4, X5, X6, which denote mutation rates for Strain 1, Strain 2, ... . Only addition +, subtraction -,
+#' multiplication *, and division /, are currently supported.
+#' @return a vector of length 3 containg MLE of an arbitrary function of mutation rates as well as lower and upper
+#' profile likelihood confidence limits.
+#' @export
+#' @examples
+#' mle.fold(list(c(26, 9, 16, 34, 15, 25, 77, 13, 14, 19), c(67, 12, 112, 24,
+#' 2151, 159, 102, 60, 32, 26)), e = c(0.5, 1))
+#' @examples
+#' mle.fold(list(c(33,17,15), c(1,4,10), c(45,86,156)), fun="X1*X2/X3")
+#' @references
+#' Venzon DJ, Moolgavkar SH. A Method for Computing Profile-Likelihood-Based Confidence Intervals. Appl Stat.
+#' 1988;37: 87. doi:10.2307/2347496
+#' @references
+#' Zheng Q. New approaches to mutation rate fold change in Luria–Delbrück fluctuation experiments. Math Biosci.
+#' 2021;335: 108572. doi:10.1016/j.mbs.2021.108572
 mle.fold <- function(data, e=NULL, w=NULL, cv=NULL, Nt=NULL, fun="fold X1/X2") {
   
   if (!is.list(data) | !length(data) > 1) stop("Colony counts must be a list of length 2 to 6.")
   
   # checking if fold function is correct
-  fun <- tryCatch(match.arg(fun, c("fold X1/X2", "substraction X1-X2", "double fold (X1/X2)/(X3/X4)", "background substraction fold (X1-X2)/(X3-X2)")), error = function(err) fun)
+  fun <- tryCatch(match.arg(fun, c("fold X1/X2", "subtraction X1-X2", "double fold (X1/X2)/(X3/X4)", "background subtraction fold (X1-X2)/(X3-X2)")), error = function(err) fun)
   if (fun == "fold X1/X2") {function.Y <- "X1/X2"}
-  else if (fun == "substraction X1-X2") {function.Y <- "X1-X2"}
+  else if (fun == "subtraction X1-X2") {function.Y <- "X1-X2"}
   else if (fun == "double fold (X1/X2)/(X3/X4)") {function.Y <- "(X1/X2)/(X3/X4)"}
-  else if (fun == "background substraction fold (X1-X2)/(X3-X2)") {function.Y <- "(X1-X3)/(X2-X3)"}
+  else if (fun == "background subtraction fold (X1-X2)/(X3-X2)") {function.Y <- "(X1-X3)/(X2-X3)"}
   else {function.Y <- fun}
   allowed.characters <- gsub("(X1|X2|X3|X4|X5|X6)(?=$|\\+|\\-|\\*|\\/|\\(|\\)| )", "", function.Y, perl = TRUE)
   allowed.characters <- gsub("\\(|\\)|\\+|\\-|\\/|\\*| ", "", allowed.characters)
@@ -1683,149 +872,6 @@ mle.fold <- function(data, e=NULL, w=NULL, cv=NULL, Nt=NULL, fun="fold X1/X2") {
   }
   
   return(c(Y.hat, Y.low, Y.up))
-  
-}
-
-calc.rate <- function(cs=NULL, eff=NULL, nt=NULL, fit=NULL, cv=NULL, vt=NULL, vs=NULL,
-                      ds=NULL, vn=NULL, dn=NULL, cn=NULL, model="LD", pval=TRUE) {
-  
-  model <- match.arg(arg = model, choices = c("LD", "B"), several.ok = FALSE)
-  if (model != "LD" & model != "B") {stop("Incorrect model. Model must be either 'LD' or 'B'.")}
-  
-  if (missing(cs)) {stop("Counts on selective medium were not provided.")}
-  if (!is.vector(cs)) {stop("Counts on selective medium have invalid data structure.")}
-  if (!is.list(cs)) {cs <- list(cs)}
-  datasets <- length(cs)
-  
-  for (i in 1:datasets) {
-    cs[[i]] <- suppressWarnings(as.double(as.vector(cs[[i]])))
-    if (any(!is.finite(cs[[i]]))) {stop(paste("There are non-numeric characters in counts on selective medium in dataset ", names(cs)[i], ".", sep = ""))}
-    else if (length(cs[[i]]) < 2) {stop(paste("There are less than 2 colony counts on selective medium in dataset ", names(cs)[i], ".", sep = ""))}
-    else if (any(cs[[i]] < 0)) {stop(paste("There are negative values in colony counts on selective medium in dataset ", names(cs)[i], ".", sep = ""))}
-    else if (sum(cs[[i]]) == 0) {stop(paste("At least one colony count on selective medium in datatset ", names(cs)[i], " must be bigger than 0.", sep = ""))}
-  }
-  
-  if (((missing(eff) & missing(vs) & missing(ds) & missing(nt)) | (missing(eff) & missing(vt) & missing(vs) & missing(ds) & !missing(nt))) & !(missing(eff) & missing(vs) & missing(ds) & missing(nt) & missing(vn) & missing(dn) & missing(cn) & !missing(vt))) {
-    message("Plating efficiency will be set to 1.")
-    eff <- rep(1, datasets)
-  } else if (missing(eff) & (missing(vt) | missing(vs) | missing(ds))) {
-    if (missing(vt)) {stop("Cannot calculate plating efficiency because total culture volume is missing.")}
-    else if (missing(vs)) {stop("Cannot calculate plating efficiency because volume plated on selective medium is missing.")}
-    else if (missing(ds)) {stop("Cannot calculate plating efficiency because dilution factor on selective medium is missing.")}
-  }
-  
-  if (((missing(nt) & missing(vn) & missing(dn) & missing(cn) & missing(eff)) | (missing(nt) & missing(vn) & missing(dn) & missing(cn) & missing(vt) & !missing(eff))) & !(missing(eff) & missing(vs) & missing(ds) & missing(nt) & missing(vn) & missing(dn) & missing(cn) & !missing(vt))) {
-    message("Total culture size will be set to 1.")
-    nt <- rep(1, datasets)
-  } else if (missing(nt) & (missing(vt) | missing(vn) | missing(dn) | missing(cn))) {
-    if (missing(vt)) {stop("Cannot calculate total culture size because total culture volume is missing.")}
-    else if (missing(vn)) {stop("Cannot calculate total culture size because volume plated on non-selective medium is missing.")}
-    else if (missing(dn)) {stop("Cannot calculate total culture size because dilution factor on non-selective medium is missing.")}
-    else if (missing(cn)) {stop("Cannot calculate total culture size because counts on non-selective medium is missing.")}
-  }
-  
-  if (missing(eff) | missing(nt)) {
-    vt <- suppressWarnings(as.double(as.vector(vt)))
-    if (any(!is.finite(vt))) {stop("There are non-numeric characters in total culture volume.")}
-    else if (length(vt) < datasets) {stop(paste("There are ", length(vt), " values in total culture volume, expected ", datasets, ".", sep = ""))}
-    else if (length(vt) > datasets) {warning(paste("There are ", length(vt), " values in total culture volume, only first ", datasets, " will be used.", sep = "")); vt <- vt[1:datasets]}
-    if (any(vt <= 0)) {stop("Each total culture volume must be > 0.")}
-  }
-  
-  if (missing(eff)) {
-    vs <- suppressWarnings(as.double(as.vector(vs)))
-    if (any(!is.finite(vs))) {stop("There are non-numeric characters in volume plated on selective medium.")}
-    else if (length(vs) < datasets) {stop(paste("There are ", length(vs), " values in volume plated on selective medium, expected ", datasets, ".", sep = ""))}
-    else if (length(vs) > datasets) {warning(paste("There are ", length(vs), " values in volume plated on selective medium, only first ", datasets, " will be used.", sep = "")); vs <- vs[1:datasets]}
-    if (any(vs <= 0)) {stop("Each volume plated on selective medium must be > 0.")}
-    
-    ds <- suppressWarnings(as.double(as.vector(ds)))
-    if (any(!is.finite(ds))) {stop("There are non-numeric characters in dilution factor on selective medium.")}
-    else if (length(ds) < datasets) {stop(paste("There are ", length(ds), " values in dilution factor on selective medium, expected ", datasets, ".", sep = ""))}
-    else if (length(ds) > datasets) {warning(paste("There are ", length(ds), " values in dilution factor on selective medium, only first ", datasets, " will be used.", sep = "")); ds <- ds[1:datasets]}
-    if (any(ds <= 0)) {stop("Each dilution factor on selective medium must be > 0.")}
-    
-    if (any(vs / ds > vt)) {stop("The amount plated on selective medium is bigger than total culture volume.")}
-    
-    eff <- vs / ds / vt
-    
-  } else {
-    eff <- suppressWarnings(as.double(as.vector(eff)))
-    if (any(!is.finite(eff))) {stop("There are non-numeric characters in plating efficiency.")}
-    else if (length(eff) < datasets) {stop(paste("There are ", length(eff), " values in plating efficiency, expected ", datasets, ".", sep = ""))}
-    else if (length(eff) > datasets) {warning(paste("There are ", length(eff), " values in plating efficiency, only first ", datasets, " will be used.", sep = "")); eff <- eff[1:datasets]}
-    if (any(eff <= 0 | eff > 1)) {stop("Each plating efficiency must be > 0 and \U2264 1.")}
-  }
-  
-  if (missing(nt)) {
-    vn <- suppressWarnings(as.double(as.vector(vn)))
-    if (any(!is.finite(vn))) {stop("There are non-numeric characters in volume plated on non-selective medium.")}
-    else if (length(vn) < datasets) {stop(paste("There are ", length(vn), " values in volume plated on non-selective medium, expected ", datasets, ".", sep = ""))}
-    else if (length(vn) > datasets) {warning(paste("There are ", length(vn), " values in volume plated on non-selective medium, only first ", datasets, " will be used.", sep = "")); vn <- vn[1:datasets]}
-    if (any(vn <= 0)) {stop("Each volume plated on non-selective medium must be > 0.")}
-    
-    dn <- suppressWarnings(as.double(as.vector(dn)))
-    if (any(!is.finite(dn))) {stop("There are non-numeric characters in dilution factor on non-selective medium.")}
-    else if (length(dn) < datasets) {stop(paste("There are ", length(dn), " values in dilution factor on non-selective medium, expected ", datasets, ".", sep = ""))}
-    else if (length(dn) > datasets) {warning(paste("There are ", length(dn), " values in dilution factor on non-selective medium, only first ", datasets, " will be used.", sep = "")); dn <- dn[1:datasets]}
-    if (any(dn <= 0)) {stop("Each dilution factor on non-selective medium must be > 0.")}
-    
-    if (any(vn / dn > vt)) {stop("The amount plated on non-selective medium is bigger than total culture volume.")}
-    
-    CVmissing <- missing(cv)
-    if (!is.vector(cn)) {stop("Counts on non-selective medium have invalid data structure.")}
-    if (!is.list(cn)) {cn <- list(cn)}  
-    if (length(cn) < datasets) {stop(paste("There are ", length(cn), " sets in counts on non-selective medium, expected ", datasets, ".", sep = ""))}
-    if (length(cn) > datasets) {warning(paste("There are ", length(cn), " sets in counts on non-selective medium, only first ", datasets, " will be used.", sep = "")); cn <- cn[[1:datasets]]}
-    for (i in 1:datasets) {
-      cn[[i]] <- suppressWarnings(as.double(as.vector(cn[[i]])))
-      if (any(!is.finite(cn[[i]]))) {stop(paste("There are non-numeric characters in counts on non-selective medium in dataset ", names(cn)[i], ".", sep = ""))}
-      if (any(cn[[i]] < 0)) {stop(paste("There are negative values in colony counts on non-selective medium in dataset ", names(cn)[i], ".", sep = ""))}
-      if (sum(cn[[i]]) == 0) {stop(paste("At least one colony count on non-selective medium in datatset ", names(cn)[i], " must be bigger than 0.", sep = ""))}
-      if (model == "B" & CVmissing == TRUE) {
-        if (length(cn[[i]]) < 2) {stop(paste("There are less than 2 colony counts on non-selective medium in dataset ", names(cn)[i], ", at least 2 are required to calculate CV.", sep = ""))}
-        cv[i] <- sd(cn[[i]]) / mean(cn[[i]])
-      } else {
-        if (length(cn[[i]]) < 1) {stop(paste("There is less than 1 colony count on non-selective medium in dataset ", names(cn)[i], ".", sep = ""))}
-      }
-      nt[i] <- mean(cn[[i]])*vn[[i]]/dn[[i]]/vt[[i]]
-    }
-    
-  } else {
-    nt <- suppressWarnings(as.double(as.vector(nt)))
-    if (any(!is.finite(nt))) {stop("There are non-numeric characters in total culture size.")}
-    else if (length(nt) < datasets) {stop(paste("There are ", length(nt), " values in total culture size, expected ", datasets, ".", sep = ""))}
-    else if (length(nt) > datasets) {warning(paste("There are ", length(nt), " values in total culture size, only first ", datasets, " will be used.", sep = "")); nt <- nt[1:datasets]}
-    if (any(nt <= 0)) {stop("Each total culture size must be > 0.")}
-  }
-  
-  if (model == "B") {
-    if (missing(cv)) {warning("Bartlett model was chosen but CV is missing, model will switch to Luria-Delbruck."); model <- "LD"}
-    else {
-      cv <- suppressWarnings(as.double(as.vector(cv)))
-      if (any(!is.finite(cv))) {stop("There are non-numeric characters in coefficient of variation.")}
-      else if (length(cv) < datasets) {stop(paste("There are ", length(cv), " values in coefficient of variation, expected ", datasets, ".", sep = ""))}
-      else if (length(cv) > datasets) {warning(paste("There are ", length(cv), " values in coefficient of variation, only first ", datasets, " will be used.", sep = "")); cv <- cv[1:datasets]}
-      if (any(cv <= 0)) {stop("Each coefficient of variation must be > 0.")}
-      if (any(cv < 1e-5)) {warning("Coefficients of variation smaller than 1e-5 will be set to 1e-5."); cv[cv < 1e-5] <- 1e-5}
-      if (any(cv > 10)) {warning("Coefficients of variation bigger than 10 will be set to 10."); cv[cv < 10] <- 10}
-    }
-  } else {
-    if (!missing(cv)) {message("Coefficient of variation will be ignored because it is not a valid parameter under the Luria-Delbruck model.")}
-  }
-  
-  if (model == "LD") {
-    if (missing(fit)) {message("Mutant relative fitness will be set to 1."); fit <- rep(1, datasets)}
-    else {
-      fit <- suppressWarnings(as.double(as.vector(fit)))
-      if (any(!is.finite(fit))) {stop("There are non-numeric characters in mutant relative fitness.")}
-      else if (length(fit) < datasets) {stop(paste("There are ", length(fit), " values in mutant relative fitness, expected ", datasets, ".", sep = ""))}
-      else if (length(fit) > datasets) {warning(paste("There are ", length(fit), " values in mutant relative fitness, only first ", datasets, " will be used.", sep = "")); fit <- fit[1:datasets]}
-      if (any(fit <= 0)) {stop("Each mutant relative fitness must be > 0.")}
-    }
-  } else {
-    if (!missing(fit)) {message("Mutant relative fitness will be ignored because it is not a valid parameter under the Bartlett model.")}
-  }
   
 }
 

@@ -13,32 +13,12 @@ aux_seq_integrate_s <- function(e = 1, w = 1, d = 0, lag = 0, phi = 0, n = 10L) 
     .Call(`_mlemur_aux_seq_integrate_s`, e, w, d, lag, phi, n)
 }
 
-aux_seq_integrate <- function(e = 1, w = 1, d = 0, lag = 0, phi = 0, n = 10L) {
-    .Call(`_mlemur_aux_seq_integrate`, e, w, d, lag, phi, n)
-}
-
 aux_seq <- function(e, w, n, option = 0L) {
     .Call(`_mlemur_aux_seq`, e, w, n, option)
 }
 
-aux_seq_deriv1_deriv2 <- function(e, w, n, h = 1.0e-4, boost = FALSE) {
-    .Call(`_mlemur_aux_seq_deriv1_deriv2`, e, w, n, h, boost)
-}
-
-aux_seq_lag_ext <- function(L, e, n, boost = FALSE, deriv = 0L) {
-    .Call(`_mlemur_aux_seq_lag_ext`, L, e, n, boost, deriv)
-}
-
 aux_seq_lag_s <- function(e = 1, lag = 0, n = 10L) {
     .Call(`_mlemur_aux_seq_lag_s`, e, lag, n)
-}
-
-aux_seq_lag_s_deriv1 <- function(e = 1, lag = 0, n = 10L) {
-    .Call(`_mlemur_aux_seq_lag_s_deriv1`, e, lag, n)
-}
-
-aux_seq_lag_s_deriv2 <- function(e = 1, lag = 0, n = 10L) {
-    .Call(`_mlemur_aux_seq_lag_s_deriv2`, e, lag, n)
 }
 
 aux_seq_lag_s_ext <- function(e, lag, n, boost = FALSE) {
@@ -61,16 +41,8 @@ prob_b0 <- function(A, k, seq0, xi, len) {
     .Call(`_mlemur_prob_b0`, A, k, seq0, xi, len)
 }
 
-prob_mutations <- function(m, n, e = 1, w = 1, cv = 0, death = 0, lag = 0, phi = 0, poisson = 0) {
-    .Call(`_mlemur_prob_mutations`, m, n, e, w, cv, death, lag, phi, poisson)
-}
-
 calc_probs <- function(m, cv, seq, len, poisson = 0, boost = FALSE) {
     .Call(`_mlemur_calc_probs`, m, cv, seq, len, poisson, boost)
-}
-
-calc_probs_2 <- function(m, cv, seq, len, boost = FALSE) {
-    .Call(`_mlemur_calc_probs_2`, m, cv, seq, len, boost)
 }
 
 logprob <- function(m, len, data, seq, k = 0, poisson = 0) {
@@ -91,25 +63,5 @@ root_m <- function(current_m, lower_m, upper_m, seq, len, data, k, poisson, lalp
 
 combo_optim_m <- function(current_m, lower_m, upper_m, R, seq1, seq2, len1, len2, data1, data2, k1, k2, poisson1, poisson2, verbose = FALSE) {
     .Call(`_mlemur_combo_optim_m`, current_m, lower_m, upper_m, R, seq1, seq2, len1, len2, data1, data2, k1, k2, poisson1, poisson2, verbose)
-}
-
-optim_m_param_joint <- function(current_m, lower_m, upper_m, current_param, lower_param, upper_param, e, data, len, option, verbose = FALSE) {
-    .Call(`_mlemur_optim_m_param_joint`, current_m, lower_m, upper_m, current_param, lower_param, upper_param, e, data, len, option, verbose)
-}
-
-optim_m_param_joint_2 <- function(current_m, current_param, e, data, len, option, verbose = FALSE) {
-    .Call(`_mlemur_optim_m_param_joint_2`, current_m, current_param, e, data, len, option, verbose)
-}
-
-root_m_param_joint <- function(current_m, lower_m, upper_m, current_param, lower_param, upper_param, e, data, len, lalpha, rootparam, lowerroot, option, verbose = FALSE) {
-    .Call(`_mlemur_root_m_param_joint`, current_m, lower_m, upper_m, current_param, lower_param, upper_param, e, data, len, lalpha, rootparam, lowerroot, option, verbose)
-}
-
-lower_root_star_m_param_joint <- function(max, e, data, len, alpha, rootparam, option, verbose = FALSE) {
-    .Call(`_mlemur_lower_root_star_m_param_joint`, max, e, data, len, alpha, rootparam, option, verbose)
-}
-
-fisher_info <- function(sqrtm, sqrtparam, e, len, option) {
-    .Call(`_mlemur_fisher_info`, sqrtm, sqrtparam, e, len, option)
 }
 

@@ -1,34 +1,17 @@
 \name{mlemur-package}
 \alias{mlemur-package}
-\alias{mlemur}
 \docType{package}
-\title{
-  A short title line describing what the package does
-}
+\title{mlemur: MLE Mutation Rate calculator}
 \description{
-  A more detailed description of what the package does. A length
-  of about one to five lines is recommended.
+  A tool for calculating maximum likelihood-based mutation rates,
+  confidence intervals, and P values. Offers graphical user interface built with shiny.
 }
 \details{
-  This section should provide a more detailed overview of how to use the
-  package, including the most important functions.
+  based on rSalvador by Qi Zheng; GPL 2.0
 }
 \author{
-Your Name, email optional.
+Krystian Lazowski, klazowski@ibb.waw.pl
+Qi Zheng
 
-Maintainer: Your Name <your@email.com>
-}
-\references{
-  This optional section can contain literature or other references for
-  background information.
-}
-\keyword{ package }
-\seealso{
-  Optional links to other man pages
-}
-\examples{
-  \dontrun{
-     ## Optional simple examples of the most important functions
-     ## These can be in \dontrun{} and \donttest{} blocks.   
-  }
+Maintainer: Krystian Lazowski <klazowski@ibb.waw.pl>
 }

@@ -2,10 +2,13 @@
 % Please edit documentation in R/mlemurGUI.R
 \name{mlemur}
 \alias{mlemur}
-\title{Run mlemur}
+\title{Run mlemur in a browser window}
 \usage{
 mlemur(options = list(display.mode = "normal", launch.browser = T))
 }
+\arguments{
+\item{options}{arguments passed to shiny::shinyApp(options=...)}
+}
 \description{
-This function initializes mlemur.
+This function initializes mlemur in graphical mode.
 }

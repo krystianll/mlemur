@@ -1,15 +1,25 @@
 Package: mlemur
 Type: Package
 Title: MLE MUtatution Rate Calculator
-Version: 0.9
-Date: 2022-07-02
-Author: Krystian Lazowski, Qi Zheng
+Version: 0.9.1
+Date: 2022-07-11
+Authors@R: c(person("Krystian", "Lazowski", role = c("aut", "cre"),
+	           email = "klazowski@ibb.waw.pl", comment = c(ORCID="0000-0001-5163-7026")),
+	           person("Qi", "Zheng", role = "ctb"))
+Author: Krystian Lazowski [aut, cre] (<https://orcid.org/0000-0001-5163-7026>),
+        Qi Zheng [ctb]
 Maintainer: Krystian Lazowski <klazowski@ibb.waw.pl>
-Description: For calculating maximum likelihood-based mutation rates, confidence intervals, and P values.
+Description: A tool for calculating maximum likelihood-based mutation rates,
+  confidence intervals, and P values. Offers graphical user interface built with shiny.
 License: GPL (>= 2)
-Depends: shiny
-Imports: Rcpp (>= 1.0.5), stats, hypergeo, BH, shinyFeedback, shinyWidgets, shinyjs, writexl, readxl, clipr, reactable, Ryacas, boot
+SystemRequirements: gmp (>=6.2.1), mpfr (>=4.1.0)
+SystemRequirementsNote: 'MPFR' (MP Floating-Point Reliable Library,
+                        https://www.mpfr.org/) and 'GMP' (GNU Multiple Precision
+                        library, https://gmplib.org/), see >> README.md
+Depends: R (>= 4.1.0), shiny
+Imports: Rcpp (>= 1.0.5), stats, shinyFeedback, shinyWidgets, shinyjs, writexl, readxl, clipr, reactable, Ryacas, boot
 LinkingTo: Rcpp, BH
 RoxygenNote: 7.2.0
+NeedsCompilation: yes
 StagedInstall: no
 Encoding: UTF-8
