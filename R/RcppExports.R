@@ -65,3 +65,11 @@ combo_optim_m <- function(current_m, lower_m, upper_m, R, seq1, seq2, len1, len2
     .Call(`_mlemur_combo_optim_m`, current_m, lower_m, upper_m, R, seq1, seq2, len1, len2, data1, data2, k1, k2, poisson1, poisson2, verbose)
 }
 
+optim_m_from_probs <- function(current_m, lower_m, upper_m, R, k1, k2, poisson1, poisson2, seq1, seq2, prob1, prob2, verbose = FALSE) {
+    .Call(`_mlemur_optim_m_from_probs`, current_m, lower_m, upper_m, R, k1, k2, poisson1, poisson2, seq1, seq2, prob1, prob2, verbose)
+}
+
+prob_mutations <- function(m, n, e = 1, w = 1, cv = 0, death = 0, lag = 0, phi = 0, poisson = 0) {
+    .Call(`_mlemur_prob_mutations`, m, n, e, w, cv, death, lag, phi, poisson)
+}
+

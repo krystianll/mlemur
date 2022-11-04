@@ -7,6 +7,25 @@
 #' is drawn from gamma distribution. Wild-type cell growth is taken as deterministic while mutant cell growth is taken
 #' as stochastic according to a simple birth-and-death process. If plating efficiency is less than perfect, the success
 #' of plating each mutant cell is simulated using binomial distribution. 
+#' @details
+#' \itemize{
+#' \item{Final culture size is taken either as a constant or as a random variable drawn from the gamma distribution.}
+#' \item{Growth (and death if applicable) of the non-mutant cells is assumed to be deterministic and exponential.
+#' Time of culture growth is calculated per tube using starting and final number of cells as well as non-mutant
+#' death rate. Average number of mutations, which is proportional to the number of cellular divisions, is calculated
+#' using average mutation rate, growth rate, death rate, and time of culture growth.}
+#' \item{The actual number of mutations in the test tube is drawn from Poisson distribution using average number
+#' of mutations from the previous step.}
+#' \item{Moments of mutation (expressed in terms of number of individual cell divisions in that moment as a fraction
+#' of total number of cell divisions at the end of culture growth) are drawn from uniform distribution and then
+#' mutation epochs are calculated. For each mutant clone, the length of phenotypic lag is drawn from
+#' Poisson distribution with mean being the average length of phenotypic lag (supplied as a number of generations).
+#' If a particular mutation epoch exceeds total time of culture growth minus the extent of phenotypic lag,
+#' the whole mutant lineage is discarded.}
+#' \item{The size of the mutant clone is drawn from the distribution of the number of cells in a simple
+#' birth-and-death process using (8.46) in Bailey 1964.}
+#' \item{If plating is not perfect, the number of mutant colonies on the plates is drawn from binomial distribution.}
+#' }
 #' @param n number of parallel cultures in the experiment; a positive integer.
 #' @param rate average mutation rate; a positive number smaller than 1.
 #' @param N0 size of inoculum; a positive integer.
@@ -29,6 +48,9 @@
 #' rluria()
 #' rluria(n=100, rate=1e-7, lag = 2, trim=5000, ret="v")
 #' rluria(n=50, rate=1e-9, cv=0.5)
+#' @references
+#' Bailey NTJ. The Elements of Stochastic Processes with Applications to the Natural Sciences.
+#' 1st ed. John Wiley & Sons Inc; 1964. 
 #' @references
 #' Ycart B, Veziris N. Unbiased estimation of mutation rates under fluctuating final counts. PLoS One.
 #' 2014;9. doi:10.1371/journal.pone.0101434
@@ -55,6 +77,9 @@ rluria <- function(n=10, rate=1e-8, N0=1, Nt=1e9, mut_fit=1.0, death_prob=0, lag
 # Auxiliary sequence for probability computation
 # 
 # @description For internal use only.
+# @references
+# Bailey NTJ. The Elements of Stochastic Processes with Applications to the Natural Sciences.
+# 1st ed. John Wiley & Sons Inc; 1964. 
 # @references
 # Abramowitz M, Stegun I. Handbook of Mathematical Functions. Washington: United States Department of Commerce; 1964
 # @references
@@ -185,14 +210,14 @@ p0 <- function(data, e=1, w=1, d=0, lag=0, phi=0, poisson=0) {
 #' Estimate m using Lea-Coulson method
 #' 
 #' @description The basic formula comes from a well-known paper by Lea & Coulson. Corrections for partial plating,
-#' phenotypic delay (*only non-stochastic*), residual mutations, and differential growth were taken from other Angerer and Koch.
+#' phenotypic delay (\strong{only non-stochastic}), residual mutations, and differential growth were taken from other Angerer and Koch.
 #' Correction for mutant death is based on the Angerer's rationale regarding phenotypic lag, with Newcombe correction
 #' for extra cellular divisions.
 #' @param data a vector of integer-valued colony counts.
 #' @param e plating efficiency; a positive number not bigger than 1.
 #' @param w mutant relative fitness; a positive number.
 #' @param poisson average number of residual Poisson-distributed mutations on the plate; a non-negative number.
-#' @param lag phenotypic lag (*only non-stochastic*); a non-negative number.
+#' @param lag phenotypic lag (\strong{only non-stochastic}); a non-negative number.
 #' @param death death probability of wild-type and mutant cells; a non-negative number smaller than 0.5; relative (d)eath rate
 #' and death (p)robability are connected by the relation d = p/(1-p); p = d/(1+d).
 #' @param confint if TRUE, 95 percent confidence intervals will be estimated by bootstrap using boot package.
@@ -246,14 +271,14 @@ lea.coulson.median <- function(data, e=1, w=1, poisson=0, lag=0, death=0, confin
 #' Estimate m using Drake method
 #' 
 #' @description The basic formula comes from the Drake paper. Corrections for partial plating,
-#' phenotypic delay (*only non-stochastic*), residual mutations, and differential growth were taken from other Angerer and Koch.
+#' phenotypic delay (\strong{only non-stochastic}), residual mutations, and differential growth were taken from other Angerer and Koch.
 #' Correction for mutant death is based on the Angerer's rationale regarding phenotypic lag, with Newcombe correction
 #' for extra cellular divisions.
 #' @param data a vector of integer-valued colony counts.
 #' @param e plating efficiency; a positive number not bigger than 1.
 #' @param w mutant relative fitness; a positive number.
 #' @param poisson average number of residual Poisson-distributed mutations on the plate; a non-negative number.
-#' @param lag phenotypic lag (*only non-stochastic*); a non-negative number.
+#' @param lag phenotypic lag (\strong{only non-stochastic}); a non-negative number.
 #' @param death death probability of wild-type and mutant cells; a non-negative number smaller than 0.5; relative (d)eath rate
 #' and death (p)robability are connected by the relation d = p/(1-p); p = d/(1+d).
 #' @return a single non-negative value of m.
@@ -485,7 +510,7 @@ mle.mutations <- function(data, e=1, w=1, lag=0, poisson=0, death=0, phi=0, cv=0
 #' simplified and optimised to avoid redundant computations. It uses a hybrid Newton-bisection
 #' algorithm as well as arbitrary-precision arithmetic if necessary for better stability.
 #' @param datax a vector of integer-valued colony counts for strain X.
-#' @param datay a vector of integer-valued colony counts.
+#' @param datay a vector of integer-valued colony counts for strain Y.
 #' @param ex plating efficiency for strain X; a positive number not bigger than 1.
 #' @param ey plating efficiency for strain Y; a positive number not bigger than 1.
 #' @param wx mutant relative fitness for strain X; a positive number.
@@ -873,6 +898,205 @@ mle.fold <- function(data, e=NULL, w=NULL, cv=NULL, Nt=NULL, fun="fold X1/X2") {
   
   return(c(Y.hat, Y.low, Y.up))
   
+}
+
+#' Calculate power of likelihood ratio test
+#'
+#' @description This function calculates theoretical power of the likelihood ratio test given prescribed mutation rates,
+#' final culture sizes, and sample sizes.
+#' @param n1 A vector containing sample size of the first strain. If longer than one, powr will be calculated for each
+#' pair of n1 and n2.
+#' @param n2 A vector containing sample size of the second strain. If NULL, it will be taken as equal to n1.
+#' @param rate1 Mutation rate of the first strain.
+#' @param rate2 Mutation rate of the second strain.
+#' @param Nt1 Average culture size of the first strain.
+#' @param Nt2 Average culture size of the second strain.
+#' @param e1 Plating efficiency of the first strain.
+#' @param e2 Plating efficiency of the second strain.
+#' @param w1 Relative mutant fitness of the first strain.
+#' @param w2 Relative mutant fitness of the second strain.
+#' @param lag1 Phenotypic lag of the first strain.
+#' @param lag2 Phenotypic lag of the second strain.
+#' @param death1 Relative death rate of the first strain.
+#' @param death2 Relative death rate of the second strain.
+#' @param phi1 Size of inoculum in proportion to the total culture size of the first strain.
+#' @param phi2 Size of inoculum in proportion to the total culture size of the second strain.
+#' @param cv1 Coefficient of variation of the culture sizes of the first strain.
+#' @param cv2 Coefficient of variation of the culture sizes of the second strain.
+#' @param poisson1 Average number of residual Poisson-distributed mutations on the plate of the first strain.
+#' @param poisson2 Average number of residual Poisson-distributed mutations on the plate of the second strain.
+#' @param verbose if TRUE, mlemur will print messages to the console.
+#' @return A vector of length 1 or a matrix of size length(n1) x length(n2) containing values of the power.
+#' @export
+#' @examples
+#' power.est(n1=15, n2 = 10, rate1 = 1e-9, rate2 = 2e-9, Nt1 = 1e9, Nt2 = 5e8)
+#' @examples
+#' power.est(n1=c(10, 20, 30), rate1 = 1e-9, rate2 = 5e-9, Nt1 = 1e9, Nt2 = 1e9, e1 = 1, e2 = 0.1)
+#' @references
+#' Gudicha DW., Schmittmann VD. and Vermunt JK. Statistical power of likelihood ratio and Wald tests in latent class models with covariates. Behav. Res. Methods
+#' 2017;49: 1824–1837. doi:10.3758/s13428-016-0825-y
+#' @references
+#' Self SG., Mauritsen RH. and Ohara J.Power Calculations for Likelihood Ratio Tests in Generalized Linear Models. Biometrics
+#' 1992;48: 31. doi:10.2307/2532736
+power.est <- function(n1 = 30, n2 = NULL, rate1 = 1e-9, rate2 = 2e-9, Nt1 = 1e9, Nt2 = 1e9,
+                      e1 = 1, e2 = 1, w1 = 1, w2 = 1, lag1 = 0, lag2 = 0, death1 = 0, death2 = 0,
+                      phi1 = 0, phi2 = 0, cv1 = 0, cv2 = 0, poisson1 = 0, poisson2 = 0, verbose = FALSE) {
+  
+  if (rate1==rate2) {stop("Mutation rates are equal.")}
+  
+  if (is.null(n2)) {n2 <- n1}
+  else if (is.null(n1)) {n1 <- n2}
+  
+  if (verbose) message("Calculating prob1")
+  N1 <- 5000
+  prob1 <- 0
+  iter <- 0
+  while (sum(prob1) < 0.99) {
+    N1 <- N1 + 5000
+    prob1 <- prob_mutations(m = rate1*Nt1, n = N1, e = e1, w = w1, cv = cv1, death = death1, lag = lag1, phi = phi1, poisson = poisson1)
+    if (iter>5) stop()
+  }
+  
+  if (verbose) message("Calculating prob2")
+  N2 <- 5000
+  prob2 <- 0
+  iter <- 0
+  while (sum(prob2) < 0.99) {
+    N2 <- N2 + 5000
+    prob2 <- prob_mutations(m = rate2*Nt2, n = N2, e = e2, w = w2, cv = cv2, death = death2, lag = lag2, phi = phi2, poisson = poisson2)
+    if (iter>5) stop()
+  }
+  
+  cv1 <- 0
+  cv2 <- 0
+  if (cv1>0) {k1 <- 1/cv1/cv1} else {k1 <- 0}
+  if (cv2>0) {k2 <- 1/cv2/cv2} else {k2 <- 0}
+  
+  seq1 <- aux.seq(e = e1, w = w1, death = death1, lag = lag1, phi = phi1, n = N1-1)
+  seq2 <- aux.seq(e = e2, w = w2, death = death2, lag = lag2, phi = phi2, n = N2-1)
+  
+  # combined mutation rate
+  if (verbose) message("Finding combined mutation rate")
+  if (Nt1>Nt2) {
+    m.est <- optim_m_from_probs(current_m = (rate1*Nt1+rate2*Nt2)/2, lower_m = min(rate1*Nt1,rate2*Nt2)/2, upper_m = max(rate1*Nt1,rate2*Nt2)*2, R = Nt2/Nt1, k1 = 0,
+                                k2 = 0, poisson1 = 0, poisson2 = 0, seq1 = seq1, seq2 = seq2, prob1 = prob1, prob2 = prob2, verbose = verbose)[1]
+    probc1 <- prob_mutations(m = m.est, n = N1, e = e1, w = w1, cv = cv1, death = death1, lag = lag1, phi = phi1, poisson = poisson1)
+    probc2 <- prob_mutations(m = Nt2/Nt1*m.est, n = N2, e = e2, w = w2, cv = cv2, death = death2, lag = lag2, phi = phi2, poisson = poisson2)
+  } else {
+    m.est <- optim_m_from_probs(current_m = (rate2*Nt2+rate1*Nt1)/2, lower_m = min(rate1*Nt1,rate2*Nt2)/2, upper_m = max(rate1*Nt1,rate2*Nt2)*2, R = Nt1/Nt2, k1 = 0,
+                                k2 = 0, poisson1 = 0, poisson2 = 0, seq1 = seq2, seq2 = seq1, prob1 = prob2, prob2 = prob1, verbose = verbose)[1]
+    probc1 <- prob_mutations(m = Nt2/Nt1*m.est, n = N1, e = e1, w = w1, cv = cv1, death = death1, lag = lag1, phi = phi1, poisson = poisson1)
+    probc2 <- prob_mutations(m = m.est, n = N2, e = e2, w = w2, cv = cv2, death = death2, lag = lag2, phi = phi2, poisson = poisson2)
+  }
+  if (verbose) message(paste("Found combined m", m.est))
+  
+  if (verbose) message("Finding non-centrality parameter")
+  D <- sapply(n1, function(x) {sapply(n2, function(y) {2*(x*sum(log(prob1)*prob1)-x*sum(log(probc1)*prob1) + y*sum(log(prob2)*prob2)-y*sum(log(probc2)*prob2))})})
+  D[D<0] <- 0
+  power <- pchisq(qchisq(p = 0.95, df = 1), ncp = D, df = 1, lower.tail = F)
+  if (length(power)>1) {power <- matrix(power, ncol = length(n1), nrow = length(n2)); colnames(power) <- paste("n1=", n1, sep = ""); rownames(power) <- paste("n2=", n2, sep = "")}
+  
+  return(power)
+}
+
+#' Determine sample size to achieve prescribed power of the likelihood ratio test
+#'
+#' @description This function calculates the sample size n1=n2 to achieve prescribed power
+#' in the likelihood ratio test given prescribed mutation rates and final culture sizes.
+#' @param power A vector containing desired statistical power. If longer than one, sample size
+#' will be calculated for each value of power.
+#' @param rate1 Mutation rate of the first strain.
+#' @param rate2 Mutation rate of the second strain.
+#' @param Nt1 Average culture size of the first strain.
+#' @param Nt2 Average culture size of the second strain.
+#' @param e1 Plating efficiency of the first strain.
+#' @param e2 Plating efficiency of the second strain.
+#' @param w1 Relative mutant fitness of the first strain.
+#' @param w2 Relative mutant fitness of the second strain.
+#' @param lag1 Phenotypic lag of the first strain.
+#' @param lag2 Phenotypic lag of the second strain.
+#' @param death1 Relative death rate of the first strain.
+#' @param death2 Relative death rate of the second strain.
+#' @param phi1 Size of inoculum in proportion to the total culture size of the first strain.
+#' @param phi2 Size of inoculum in proportion to the total culture size of the second strain.
+#' @param cv1 Coefficient of variation of the culture sizes of the first strain.
+#' @param cv2 Coefficient of variation of the culture sizes of the second strain.
+#' @param poisson1 Average number of residual Poisson-distributed mutations on the plate of the first strain.
+#' @param poisson2 Average number of residual Poisson-distributed mutations on the plate of the second strain.
+#' @param verbose if TRUE, mlemur will print messages to the console.
+#' @return A vector of length length(power) containing sample sizes (n1=n2).
+#' @export
+#' @examples
+#' sample.size(power = 0.8, rate1 = 1e-9, rate2 = 2e-9, Nt1 = 1e9, Nt2 = 5e8)
+#' @examples
+#' sample.size(power = c(0.2, 0.5, 0.9), rate1 = 1e-9, rate2 = 5e-9, Nt1 = 1e9, Nt2 = 3e8, e1 = 1, e2 = 0.1)
+#' @references
+#' Gudicha DW., Schmittmann VD. and Vermunt JK. Statistical power of likelihood ratio and Wald tests in latent class models with covariates. Behav. Res. Methods
+#' 2017;49: 1824–1837. doi:10.3758/s13428-016-0825-y
+#' @references
+#' Self SG., Mauritsen RH. and Ohara J.Power Calculations for Likelihood Ratio Tests in Generalized Linear Models. Biometrics
+#' 1992;48: 31. doi:10.2307/2532736
+sample.size <- function(power=0.8, rate1 = 1e-9, rate2 = 2e-9, Nt1 = 1e9, Nt2 = 1e9,
+                        e1 = 1, e2 = 1, w1 = 1, w2 = 1, lag1 = 0, lag2 = 0, death1 = 0, death2 = 0,
+                        phi1 = 0, phi2 = 0, cv1 = 0, cv2 = 0, poisson1 = 0, poisson2 = 0, verbose = FALSE) {
+  
+  if (rate1==rate2) {stop("Mutation rates are equal.")}
+  if (any(power<=0) || any(power>=1)) {stop("Power must be between 0 and 1.")}
+  
+  if (verbose) message("Calculating prob1")
+  N1 <- 5000
+  prob1 <- 0
+  iter <- 0
+  while (sum(prob1) < 0.99) {
+    N1 <- N1 + 5000
+    prob1 <- prob_mutations(m = rate1*Nt1, n = N1, e = e1, w = w1, cv = cv1, death = death1, lag = lag1, phi = phi1, poisson = poisson1)
+    if (iter>5) stop()
+  }
+  
+  if (verbose) message("Calculating prob2")
+  N2 <- 5000
+  prob2 <- 0
+  iter <- 0
+  while (sum(prob2) < 0.99) {
+    N2 <- N2 + 5000
+    prob2 <- prob_mutations(m = rate2*Nt2, n = N2, e = e2, w = w2, cv = cv2, death = death2, lag = lag2, phi = phi2, poisson = poisson2)
+    if (iter>5) stop()
+  }
+  
+  cv1 <- 0
+  cv2 <- 0
+  if (cv1>0) {k1 <- 1/cv1/cv1} else {k1 <- 0}
+  if (cv2>0) {k2 <- 1/cv2/cv2} else {k2 <- 0}
+  
+  seq1 <- aux.seq(e = e1, w = w1, death = death1, lag = lag1, phi = phi1, n = N1-1)
+  seq2 <- aux.seq(e = e2, w = w2, death = death2, lag = lag2, phi = phi2, n = N2-1)
+  
+  # combined mutation rate
+  if (verbose) message("Finding combined mutation rate")
+  if (Nt1>Nt2) {
+    m.est <- optim_m_from_probs(current_m = (rate1*Nt1+rate2*Nt2)/2, lower_m = min(rate1*Nt1,rate2*Nt2)/2, upper_m = max(rate1*Nt1,rate2*Nt2)*2, R = Nt2/Nt1, k1 = 0,
+                                k2 = 0, poisson1 = 0, poisson2 = 0, seq1 = seq1, seq2 = seq2, prob1 = prob1, prob2 = prob2, verbose = verbose)[1]
+    probc1 <- prob_mutations(m = m.est, n = N1, e = e1, w = w1, cv = cv1, death = death1, lag = lag1, phi = phi1, poisson = poisson1)
+    probc2 <- prob_mutations(m = Nt2/Nt1*m.est, n = N2, e = e2, w = w2, cv = cv2, death = death2, lag = lag2, phi = phi2, poisson = poisson2)
+  } else {
+    m.est <- optim_m_from_probs(current_m = (rate2*Nt2+rate1*Nt1)/2, lower_m = min(rate1*Nt1,rate2*Nt2)/2, upper_m = max(rate1*Nt1,rate2*Nt2)*2, R = Nt1/Nt2, k1 = 0,
+                                k2 = 0, poisson1 = 0, poisson2 = 0, seq1 = seq2, seq2 = seq1, prob1 = prob2, prob2 = prob1, verbose = verbose)[1]
+    probc1 <- prob_mutations(m = Nt2/Nt1*m.est, n = N1, e = e1, w = w1, cv = cv1, death = death1, lag = lag1, phi = phi1, poisson = poisson1)
+    probc2 <- prob_mutations(m = m.est, n = N2, e = e2, w = w2, cv = cv2, death = death2, lag = lag2, phi = phi2, poisson = poisson2)
+  }
+  if (verbose) message(paste("Found combined m", m.est))
+  
+  if (verbose) message("Finding non-centrality parameter")
+  D <- rep(0, length(power))
+  for (i in 1:length(power)){
+    upperlimit <- 10
+    while(pchisq(qchisq(p = 0.95, df = 1), ncp = upperlimit, df = 1, lower.tail = F) < power[i]) {upperlimit <- upperlimit + 10}
+    D[i] <- uniroot(function(D, a) {pchisq(qchisq(p = 0.95, df = 1), ncp = D, df = 1, lower.tail = F)-a}, c(0,upperlimit), tol = 0.0001, a = power[i])$root
+  }
+  if (verbose) message("Calculating required sample size")
+  n <- D/2/(sum(log(prob1)*prob1)-sum(log(probc1)*prob1) + sum(log(prob2)*prob2)-sum(log(probc2)*prob2))
+  
+  return(ceiling(n))
 }
 
 # Mutation Rate Calculator
