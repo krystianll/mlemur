@@ -499,7 +499,6 @@ std::vector<double> aux_seq_lag_s(double e=1, double lag=0, int n=10) {
     };
   };
   
-  // Rcout << max << "\n";
   return(hSeq);
   
 }
@@ -625,14 +624,11 @@ std::vector<double> aux_seq_death(double e, double w, double d, int n) {
     if (d>=(1.0-2*e)) {
       hSeq[0] = -1.0+r*d*boost::math::hypergeometric_pFq({1.0, r}, {r+2.0}, d)*boost::math::beta(r,2.0)+r*(1.0-d)/(r+1.0)*(d*boost::math::hypergeometric_pFq({1.0, r+1.0}, {r+2.0}, d)+(1.0-e-d)/e*boost::math::hypergeometric_pFq({1.0, r+1.0}, {r+2.0}, ((e+d-1.0)/e)));
       for (i=1; i<=n; ++i) {
-        // Rcout << i << " ";
         try {
           hSeq[i] = r*pow((1-d),2)/e*boost::math::beta(i,r+1.0)*boost::math::hypergeometric_pFq({i+1.0, r+1.0}, {i+r+1.0}, ((e+d-1.0)/e));
         } catch (...) {
           Rcpp::stop("Error");
-          // hSeq[i] = r*pow((1-d),2)/e*boost::math::beta(i,r+1.0)*static_cast<double>(boost::math::hypergeometric_pFq({static_cast<mpfr_20>(i+1.0), static_cast<mpfr_20>(r+1.0)}, {static_cast<mpfr_20>(i+r+1.0)}, static_cast<mpfr_20>((e+d-1.0)/e)));
         }
-        // Rcout << hSeq[i] << " | ";
       }
     } else {
       hSeq[0] = -1.0+r*d*boost::math::hypergeometric_pFq({1.0, r}, {r+2.0}, d)*boost::math::beta(r,2.0)+r*(1.0-d)/(r+1.0)*(d*boost::math::hypergeometric_pFq({1.0, r+1.0}, {r+2.0}, d)+(1.0-e-d)/e*(e/(1-d))*boost::math::hypergeometric_pFq({1.0, 1.0}, {r+2.0}, ((e+d-1.0)/(d-1.0))));
@@ -641,7 +637,6 @@ std::vector<double> aux_seq_death(double e, double w, double d, int n) {
           hSeq[i] = r*pow((1-d),2)/e*boost::math::beta(i,r+1.0)*pow(e/(1.0-d),r+1)*boost::math::hypergeometric_pFq({r+1.0, r}, {i+r+1.0}, ((e+d-1.0)/(d-1.0)));
         } catch (...) {
           Rcpp::stop("Error");
-          // hSeq[i] = r*pow((1-d),2)/e*boost::math::beta(i,r+1.0)*pow(e/(1.0-d),r+1)*static_cast<double>(boost::math::hypergeometric_pFq({static_cast<mpfr_20>(r+1.0), static_cast<mpfr_20>(r)}, {static_cast<mpfr_20>(i+r+1.0)}, static_cast<mpfr_20>((e+d-1.0)/(d-1.0))));
         }
       }
     }
@@ -679,7 +674,6 @@ std::vector<mpfr_20> aux_seq_death(mpfr_20 e, mpfr_20 w, mpfr_20 d, int n) {
 
 // [[Rcpp::export]]
 std::vector<double> aux_seq_death_ext(double e, double w, double d, int n, bool boost=false) {
-  // NumericVector aux_seq_death_ext(double e, double w, double d, int n, bool boost) {
   std::vector<double> hSeq(n+1);
   int i;
   if (boost==false) {
@@ -1146,8 +1140,7 @@ Rcpp::List calc_probs(const double m, const double cv, std::vector<double> &seq,
       };
     };
   };
-  // Rcout << std::nextafter(1.0, std::numeric_limits<float>::max) << " " << std::nextafter(1.0e-5, std::numeric_limits<float>::max) << " " << std::nextafter(10.0, std::numeric_limits<float>::max) << std::endl;
-  
+
   return Rcpp::List::create(Rcpp::Named("prob") = prob,
                             Rcpp::Named("prob1") = prob1,
                             Rcpp::Named("prob2") = prob2);
@@ -1418,72 +1411,6 @@ void loglik_boost(double &loglik, const double &m, std::vector<double> &seq, con
   loglik=static_cast<double>(xloglik);
 }
 
-// void optim_alpha(double &alpha, const double &current_m, const double &current_U, const double &current_loglik,
-//                  std::vector<double> &seq, const int &len, std::vector<int> &data, const double &k, const double &poisson){
-//   alpha=1000.0;
-//   double beta=0.1;
-//   double new_loglik,new_m;
-//   int iter=0;
-//   do {
-//     iter++;
-//     if(iter>200) {alpha=0; break;};
-//     alpha*=0.5;
-//     new_m=current_m+alpha*current_U;
-//     if(new_m<0){
-//       new_loglik=2*current_loglik;
-//     } else {
-//       loglik(new_loglik, new_m, seq, len, data, k, poisson);
-//       if(!std::isfinite(new_loglik)) {loglik_boost(new_loglik, new_m, seq, len, data, k, poisson);};
-//     };
-//   } while (current_loglik-new_loglik>=-alpha*beta*current_U*current_U);
-// }
-// 
-// // [[Rcpp::export]]
-// std::vector<double> optim_m(double current_m, std::vector<double> &seq, const int &len, std::vector<int> &data, const double &k, const double &poisson, bool verbose=false){
-//   int iter=0;
-//   double new_m,new_U,new_J,new_loglik,current_U,current_J,current_loglik;
-//   double alpha;
-//   
-//   derivatives(current_U, current_J, current_loglik, current_m, seq, len, data, k, poisson);
-//   if ((!std::isfinite(current_U)) || (!std::isfinite(current_J)) || (!std::isfinite(current_loglik))) {
-//     derivatives_boost(current_U, current_J, current_loglik, current_m, seq, len, data, k, poisson);
-//   };
-//   if(verbose) {Rcout<< "U: " << current_U << " J: " << current_J << " loglik: " << current_loglik << " m: " << current_m << "\n\n";};
-//   if ((!std::isfinite(current_U)) || (!std::isfinite(current_J)) || (!std::isfinite(current_loglik))) {return {-1.0};};
-//   
-//   while(std::abs(current_U)>1.0e-6){
-//     iter++;
-//     // if (iter>50) {return {-1.0};};
-//     
-//     new_m=current_m+current_U/current_J;
-//     
-//     derivatives(new_U, new_J, new_loglik, new_m, seq, len, data, k, poisson);
-//     if ((!std::isfinite(new_U)) || (!std::isfinite(new_J)) || (!std::isfinite(new_loglik))) {derivatives_boost(new_U, new_J, new_loglik, new_m, seq, len, data, k, poisson);};
-// 
-//     if(verbose) {Rcout << "newton:: iter: " << iter << " U: " << new_U << " J: " << new_J << " loglik: " << new_loglik << " m: " << new_m << "\n";};
-//     
-//     if ((!std::isfinite(new_U)) || (!std::isfinite(new_J)) || (!std::isfinite(new_loglik)) || (new_m<=0) || (new_m>1.0e6) || (new_loglik<current_loglik)){
-//       optim_alpha(alpha, current_m, current_U, current_loglik, seq, len, data, k, poisson);
-//       if(alpha==0) {return {-1.0};};
-//       new_m=current_m+alpha*current_U;
-//       
-//       derivatives(new_U, new_J, new_loglik, new_m, seq, len, data, k, poisson);
-//       if ((!std::isfinite(new_U)) || (!std::isfinite(new_J)) || (!std::isfinite(new_loglik))) {
-//         derivatives_boost(new_U, new_J, new_loglik, new_m, seq, len, data, k, poisson);
-//       };
-//       if ((!std::isfinite(new_U)) || (!std::isfinite(new_J)) || (!std::isfinite(new_loglik))) {return {-1.0};};
-//       
-//       if(verbose) {Rcout << "gradient:: alpha: " << alpha << " iter: " << iter << " U: " << new_U << " J: " << new_J << " loglik: " << new_loglik << " m: " << new_m << "\n";};
-//     };
-//     
-//     current_m=new_m;
-//     current_U=new_U;
-//     current_J=new_J;
-//     current_loglik=new_loglik;
-//   }
-//   return std::vector<double>{current_m, current_U, current_J, current_loglik};
-// }
-
 // [[Rcpp::export]]
 std::vector<double> optim_m(double current_m, double lower_m, double upper_m, std::vector<double> &seq, const int &len, std::vector<int> &data, const double &k, const double &poisson, bool verbose=false){
   int iter=0;
@@ -1558,7 +1485,6 @@ std::vector<double> optim_m(double current_m, double lower_m, double upper_m, st
     
     derivatives(new_U, new_J, new_loglik, new_m, seq, len, data, k, poisson);
     if ((!std::isfinite(new_U)) || (!std::isfinite(new_J)) || (!std::isfinite(new_loglik))) {derivatives_boost(new_U, new_J, new_loglik, new_m, seq, len, data, k, poisson);};
-    // if ((!std::isfinite(new_U)) || (!std::isfinite(new_J)) || (!std::isfinite(new_loglik)) || (new_U>lower_U) || (new_U<upper_U)) {return {-1.0};};
     if ((!std::isfinite(new_U)) || (!std::isfinite(new_J)) || (!std::isfinite(new_loglik))) {return {-1.0};};
     
     if(verbose) {Rcout << "U: " << new_U << " J: " << new_J << " loglik: " << new_loglik << "\n";};
@@ -1603,8 +1529,6 @@ double root_m(double current_m, double lower_m, double upper_m, std::vector<doub
         loglik(upper_loglik, upper_m, seq, len, data, k, poisson);
         if(!std::isfinite(upper_loglik)) {loglik_boost(upper_loglik, upper_m, seq, len, data, k, poisson);};
         upper_loglik-=lalpha;
-        // Rcout << lower_m << " " << upper_m << "\n";
-        // Rcout << lower_loglik << " " << upper_loglik << "\n";
       };
     } else {
       int n=0;
@@ -1619,8 +1543,6 @@ double root_m(double current_m, double lower_m, double upper_m, std::vector<doub
         loglik(lower_loglik, lower_m, seq, len, data, k, poisson);
         if(!std::isfinite(lower_loglik)) {loglik_boost(lower_loglik, lower_m, seq, len, data, k, poisson);};
         lower_loglik-=lalpha;
-        // Rcout << lower_m << " " << upper_m << "\n";
-        // Rcout << lower_loglik << " " << upper_loglik << "\n";
       };
     };
   };
@@ -1650,23 +1572,7 @@ double root_m(double current_m, double lower_m, double upper_m, std::vector<doub
     if((new_m<lower_m) || (new_m>upper_m)){
       new_m=(lower_m+upper_m)/2;
       if(verbose) {Rcout << "bisection:: m: " << new_m << "\n";};
-      
-      // derivatives(new_U, new_J, new_loglik, new_m, seq, len, data, k, poisson);
-      // if ((!std::isfinite(new_U)) || (!std::isfinite(new_J)) || (!std::isfinite(new_loglik))) {derivatives_boost(new_U, new_J, new_loglik, new_m, seq, len, data, k, poisson);};
-      // new_loglik-=lalpha;
-      
-      // if (((lower_loglik<upper_loglik) && (new_loglik<0)) || ((lower_loglik>upper_loglik) && (new_loglik>0))) {
-      //   lower_m=new_m;
-      //   lower_loglik=new_loglik;
-      // } else if (((lower_loglik<upper_loglik) && (new_loglik>0)) || ((lower_loglik>upper_loglik) && (new_loglik<0))) {
-      //   upper_m=new_m;
-      //   upper_loglik=new_loglik;
-      // };
-    } // else {
-    // derivatives(new_U, new_J, new_loglik, new_m, seq, len, data, k, poisson);
-    // if ((!std::isfinite(new_U)) || (!std::isfinite(new_J)) || (!std::isfinite(new_loglik))) {derivatives_boost(new_U, new_J, new_loglik, new_m, seq, len, data, k, poisson);};
-    // new_loglik-=lalpha;
-    // };
+    }
     
     derivatives(new_U, new_J, new_loglik, new_m, seq, len, data, k, poisson);
     if ((!std::isfinite(new_U)) || (!std::isfinite(new_J)) || (!std::isfinite(new_loglik))) {derivatives_boost(new_U, new_J, new_loglik, new_m, seq, len, data, k, poisson);};
@@ -1680,19 +1586,11 @@ double root_m(double current_m, double lower_m, double upper_m, std::vector<doub
       upper_loglik=new_loglik;
     };
     
-    // derivatives(new_U, new_J, new_loglik, new_m, seq, len, data, k, poisson);
-    // if ((!std::isfinite(new_U)) || (!std::isfinite(new_J)) || (!std::isfinite(new_loglik))) {derivatives_boost(new_U, new_J, new_loglik, new_m, seq, len, data, k, poisson);};
-    // new_loglik-=lalpha;
-    
     if(verbose) {Rcout << "U: " << new_U << " J: " << new_J << " loglik: " << new_loglik << "\n";};
     
     if ((!std::isfinite(new_U)) || (!std::isfinite(new_J)) || (!std::isfinite(new_loglik))) {return -1.0;};
     
     current_m=new_m;current_U=new_U;current_loglik=new_loglik;
-    
-    // if ((new_loglik<std::min(lower_loglik, upper_loglik)) || (new_loglik>std::max(lower_loglik, upper_loglik))){
-    //   
-    // };
   };
   return current_m;
 }
@@ -1798,4 +1696,256 @@ std::vector<double> combo_optim_m(double current_m, double lower_m, double upper
   };
   
   return std::vector<double>{current_m, current_loglik};
+}
+
+/// HELPER FUNCTIONS FOR ONE-PARAMETER ESTIMATES - SAMPLE SIZE AND POWER EST ///
+
+void derivatives_power(double &U, double &J, double &loglik, const double &m, std::vector<double> &prob0, std::vector<double> &seq, const double &k, const double &poisson, const bool &fisher=true){
+  int i;
+  int samplesize=prob0.size();
+  std::vector<double> prob(samplesize),prob1(samplesize),prob2(samplesize),subscore(samplesize);
+  
+  if (k==0){
+    if (poisson==0){
+      prob=prob_ld(m, seq, samplesize);
+    } else {
+      std::vector<double> prob_p(samplesize),prob_lc(samplesize);
+      prob_p=prob_pois(poisson, samplesize);
+      prob_lc=prob_ld(m, seq, samplesize);
+      prob=prob_ld_deriv(prob_p,prob_lc,samplesize);
+    };
+    prob1=prob_ld_deriv(seq, prob, samplesize);
+    if (fisher) {prob2=prob_ld_deriv(seq, prob1, samplesize);};
+  } else {
+    std::vector<double> xi(samplesize);
+    double seq0=seq[0];
+    double A=m/k;
+    xi=xi_seq(A, seq, samplesize);
+    if (poisson==0){
+      prob=prob_b0(A, k, seq0, xi, samplesize);
+      prob1=prob_b0_deriv1(A, k, seq, xi, samplesize);
+      if (fisher) {prob2=prob_b0_deriv2(A, k, seq, xi, samplesize);};
+    } else {
+      std::vector<double> prob_p(samplesize),prob_lc(samplesize),prob_lc_1(samplesize),prob_lc_2(samplesize);
+      prob_p=prob_pois(poisson, samplesize);
+      prob_lc=prob_b0(A, k, seq0, xi, samplesize);
+      prob=prob_ld_deriv(prob_p,prob_lc,samplesize);
+      prob_lc_1=prob_b0_deriv1(A, k, seq, xi, samplesize);
+      prob1=prob_ld_deriv(prob_p,prob_lc_1,samplesize);
+      if (fisher) {
+        prob_lc_2=prob_b0_deriv2(A, k, seq, xi, samplesize);
+        prob2=prob_ld_deriv(prob_p,prob_lc_2,samplesize);
+      };
+    };
+  };
+  
+  U=0;
+  J=0;
+  loglik=0;
+  
+  for(i=0;i<=samplesize-1;++i){
+    subscore[i]=(prob1[i]/prob[i]);
+    U+=subscore[i]*prob0[i];
+    if (fisher) {J+=(subscore[i]*subscore[i]-prob2[i]/prob[i])*prob0[i];};
+    loglik+=log(prob[i])*prob0[i];
+  };
+}
+
+void derivatives_power_boost(double &U, double &J, double &loglik, const double &m, std::vector<double> &prob0, std::vector<double> &seq, const double &k, const double &poisson, const bool &fisher=true){
+  int i;
+  int samplesize=prob0.size();
+  std::vector<mpfr_20> prob(samplesize),prob1(samplesize),prob2(samplesize),subscore(samplesize);
+  mpfr_20 xm=m,xk=k,xpoisson=poisson,xU=0,xJ=0,xloglik=0;
+  
+  if (k==0){
+    if (poisson==0){
+      prob=prob_ld(xm, seq, samplesize);
+    } else {
+      std::vector<mpfr_20> prob_p(samplesize),prob_lc(samplesize);
+      prob_p=prob_pois(xpoisson, samplesize);
+      prob_lc=prob_ld(xm, seq, samplesize);
+      prob=prob_ld_deriv(prob_p,prob_lc,samplesize);
+    };
+    prob1=prob_ld_deriv(seq, prob, samplesize);
+    if (fisher) {prob2=prob_ld_deriv(seq, prob1, samplesize);};
+  } else {
+    std::vector<mpfr_20> xi(samplesize);
+    mpfr_20 seq0=seq[0];
+    mpfr_20 A=m/k;
+    xi=xi_seq(A, seq, samplesize);
+    if (poisson==0){
+      prob=prob_b0(A, k, seq0, xi, samplesize);
+      prob1=prob_b0_deriv1(A, k, seq, xi, samplesize);
+      if (fisher) {prob2=prob_b0_deriv2(A, k, seq, xi, samplesize);};
+    } else {
+      std::vector<mpfr_20> prob_p(samplesize),prob_lc(samplesize),prob_lc_1(samplesize),prob_lc_2(samplesize);
+      prob_p=prob_pois(xpoisson, samplesize);
+      prob_lc=prob_b0(A, k, seq0, xi, samplesize);
+      prob=prob_ld_deriv(prob_p,prob_lc,samplesize);
+      prob_lc_1=prob_b0_deriv1(A, k, seq, xi, samplesize);
+      prob1=prob_ld_deriv(prob_p,prob_lc_1,samplesize);
+      if (fisher) {
+        prob_lc_2=prob_b0_deriv2(A, k, seq, xi, samplesize);
+        prob2=prob_ld_deriv(prob_p,prob_lc_2,samplesize);
+      };
+    };
+  };
+  
+  xU=0;
+  xJ=0;
+  xloglik=0;
+  
+  for(i=0;i<=samplesize-1;++i){
+    subscore[i]=(prob1[i]/prob[i]);
+    xU+=subscore[i]*prob0[i];
+    if (fisher) {xJ+=(subscore[i]*subscore[i]-prob2[i]/prob[i])*prob0[i];};
+    xloglik+=log(prob[i])*prob0[i];
+  };
+  
+  U=static_cast<double>(xU);
+  J=static_cast<double>(xJ);
+  loglik=static_cast<double>(xloglik);
+}
+
+// [[Rcpp::export]]
+std::vector<double> optim_m_from_probs(double &current_m, double &lower_m, double &upper_m, double &R,
+                                       double &k1, double &k2, double &poisson1, double &poisson2,
+                                       std::vector<double> &seq1, std::vector<double> &seq2,
+                                       std::vector<double> &prob1, std::vector<double> &prob2,
+                                       bool verbose=false){
+  int iter=0;
+  double new_m,new_U,new_J,new_loglik,current_U,current_J,current_loglik,lower_U,lower_J,lower_loglik,upper_U,upper_J,upper_loglik,
+  U1,J1,loglik1,U2,J2,loglik2;
+  
+  derivatives_power(U1, J1, loglik1, upper_m, prob1, seq1, k1, poisson1, true);
+  if(!std::isfinite(U1) || !std::isfinite(J1) || !std::isfinite(loglik1)) {derivatives_power_boost(U1, J1, loglik1, upper_m, prob1, seq1, k1, poisson1, true);};
+  derivatives_power(U2, J2, loglik2, R*upper_m, prob2, seq2, k2, poisson2, true);
+  if(!std::isfinite(U2) || !std::isfinite(J2) || !std::isfinite(loglik2)) {derivatives_power_boost(U2, J2, loglik2, R*upper_m, prob2, seq2, k2, poisson2, true);};
+  upper_U=U1+R*U2;
+  upper_J=J1+R*R*J2;
+  upper_loglik=loglik1+loglik2;
+  if (std::abs(upper_U)<1e-6) {return std::vector<double>{upper_m,upper_loglik};};
+
+  derivatives_power(U1, J1, loglik1, lower_m, prob1, seq1, k1, poisson1, true);
+  if(!std::isfinite(U1) || !std::isfinite(J1) || !std::isfinite(loglik1)) {derivatives_power_boost(U1, J1, loglik1, lower_m, prob1, seq1, k1, poisson1, true);};
+  derivatives_power(U2, J2, loglik2, R*lower_m, prob2, seq2, k2, poisson2, true);
+  if(!std::isfinite(U2) || !std::isfinite(J2) || !std::isfinite(loglik2)) {derivatives_power_boost(U2, J2, loglik2, R*lower_m, prob2, seq2,  k2, poisson2, true);};
+  lower_U=U1+R*U2;
+  lower_J=J1+R*R*J2;
+  lower_loglik=loglik1+loglik2;
+  if (std::abs(lower_U)<1e-6) {return std::vector<double>{lower_m,lower_loglik};};
+
+  while(upper_U>0){
+    lower_m=upper_m;lower_U=upper_U;lower_J=upper_J;lower_loglik=upper_loglik;
+    upper_m*=5;
+    derivatives_power(U1, J1, loglik1, upper_m, prob1, seq1, k1, poisson1, true);
+    if(!std::isfinite(U1) || !std::isfinite(J1) || !std::isfinite(loglik1)) {derivatives_power_boost(U1, J1, loglik1, upper_m, prob1, seq1, k1, poisson1, true);};
+    derivatives_power(U2, J2, loglik2, R*upper_m, prob2, seq2, k2, poisson2, true);
+    if(!std::isfinite(U2) || !std::isfinite(J2) || !std::isfinite(loglik2)) {derivatives_power_boost(U2, J2, loglik2, R*upper_m, prob2, seq2,  k2, poisson2, true);};
+    upper_U=U1+R*U2;
+    upper_J=J1+R*R*J2;
+    upper_loglik=loglik1+loglik2;
+    if (std::abs(upper_U)<1e-6) {return std::vector<double>{upper_m,upper_loglik};};
+  };
+  while(lower_U<0){
+    upper_m=lower_m;upper_U=lower_U;upper_J=lower_J;upper_loglik=lower_loglik;
+    lower_m/=10;
+    if (lower_m<1e-24) {return {0};};
+    derivatives_power(U1, J1, loglik1, lower_m, prob1, seq1, k1, poisson1, true);
+    if(!std::isfinite(U1) || !std::isfinite(J1) || !std::isfinite(loglik1)) {derivatives_power_boost(U1, J1, loglik1, lower_m, prob1, seq1, k1, poisson1, true);};
+    derivatives_power(U2, J2, loglik2, R*lower_m, prob2, seq2, k2, poisson2, true);
+    if(!std::isfinite(U2) || !std::isfinite(J2) || !std::isfinite(loglik2)) {derivatives_power_boost(U2, J2, loglik2, R*lower_m, prob2, seq2,  k2, poisson2, true);};
+    lower_U=U1+R*U2;
+    lower_J=J1+R*R*J2;
+    lower_loglik=loglik1+loglik2;
+    if (std::abs(lower_U)<1e-6) {return std::vector<double>{lower_m,lower_loglik};};
+  };
+  
+  if(verbose) {Rcout << "boundaries:: m: " << lower_m << " " << upper_m << "\n";};
+  if(verbose) {Rcout << "boundaries:: U: " << lower_U << " " << upper_U << "\n";};
+  if(verbose) {Rcout << "boundaries:: loglik: " << lower_loglik << " " << upper_loglik << "\n";};
+  
+  if ((current_m<lower_m) || (current_m>upper_m)) {current_m=(lower_m+upper_m)/2;};
+  
+  derivatives_power(U1, J1, loglik1, current_m, prob1, seq1, k1, poisson1, true);
+  if(!std::isfinite(U1) || !std::isfinite(J1) || !std::isfinite(loglik1)) {derivatives_power_boost(U1, J1, loglik1, current_m, prob1, seq1, k1, poisson1, true);};
+  derivatives_power(U2, J2, loglik2, R*current_m, prob2, seq2, k2, poisson2, true);
+  if(!std::isfinite(U2) || !std::isfinite(J2) || !std::isfinite(loglik2)) {derivatives_power_boost(U2, J2, loglik2, R*current_m, prob2, seq2,  k2, poisson2, true);};
+  current_U=U1+R*U2;
+  current_J=J1+R*R*J2;
+  current_loglik=loglik1+loglik2;
+  
+  if(verbose) {Rcout<< "U: " << current_U << " J: " << current_J << " loglik: " << current_loglik << " m: " << current_m << "\n\n";};
+  if ((!std::isfinite(current_U)) || (!std::isfinite(current_J)) || (!std::isfinite(current_loglik))) {return {-1.0};};
+  
+  while(std::abs(current_U)>1.0e-6){
+    iter++;
+    if (iter>50) {return {-1.0};};
+    
+    new_m=current_m+current_U/current_J;
+    if(verbose) {Rcout << "newton:: iter: " << iter << " m: " << new_m << "\n";};
+    
+    if((new_m<lower_m) || (new_m>upper_m)){
+      new_m=(lower_m+upper_m)/2;
+      if(verbose) {Rcout << "bisection:: m: " << new_m << "\n";};
+    };
+    
+    derivatives_power(U1, J1, loglik1, new_m, prob1, seq1, k1, poisson1, true);
+    if(!std::isfinite(U1) || !std::isfinite(J1) || !std::isfinite(loglik1)) {derivatives_power_boost(U1, J1, loglik1, new_m, prob1, seq1, k1, poisson1, true);};
+    derivatives_power(U2, J2, loglik2, R*new_m, prob2, seq2, k2, poisson2, true);
+    if(!std::isfinite(U2) || !std::isfinite(J2) || !std::isfinite(loglik2)) {derivatives_power_boost(U2, J2, loglik2, R*new_m, prob2, seq2,  k2, poisson2, true);};
+    new_U=U1+R*U2;
+    new_J=J1+R*R*J2;
+    new_loglik=loglik1+loglik2;
+    if ((!std::isfinite(new_U)) || (!std::isfinite(new_J)) || (!std::isfinite(new_loglik))) {return {-1.0};};
+    
+    if(verbose) {Rcout << "U: " << new_U << " J: " << new_J << " loglik: " << new_loglik << "\n";};
+    
+    if (new_U<0){
+      upper_m=new_m;upper_U=new_U;upper_J=new_J;upper_loglik=new_loglik;
+    } else if (new_U>0){
+      lower_m=new_m;lower_U=new_U;lower_J=new_J;lower_loglik=new_loglik;
+    };
+    current_m=new_m;current_U=new_U;current_J=new_J;current_loglik=new_loglik;
+  };
+  
+  return std::vector<double>{current_m, current_loglik};
+}
+
+/// GENERAL FUNCTION FOR CALCULATING PMF - NO DERIVATIVES ///
+
+// [[Rcpp::export]]
+std::vector<double> prob_mutations(double m, int n, double e=1, double w=1, double cv=0, double death=0, double lag=0, double phi=0, double poisson=0){
+  std::vector<double> seq(n);
+  std::vector<double> prob(n);
+
+  if (death==0 & lag==0 & phi==0) {
+    seq=aux_seq(e, w, n-1);
+  } else if (lag!=0 & w==1 & death==0 & phi==0) {
+    seq=aux_seq_lag_s_ext(e, lag, n-1);
+  } else if (death!=0 & lag==0 & phi==0) {
+    seq=aux_seq_death_ext(e, w, death/(1.-death), n-1);
+  } else {
+    seq=aux_seq_integrate_s(e, w, death/(1.-death), lag, phi, n-1);
+  };
+  
+  if (cv==0) {
+    prob=prob_ld(m, seq, n);
+  } else {
+    double k=1/cv/cv;
+    double A=m/k;
+    std::vector<double> xi(n);
+    xi=xi_seq(A, seq, n);
+    prob=prob_b0(A, k, seq[0], xi, n);
+  };
+  
+  if (poisson==0) {
+    return prob;
+  } else {
+    std::vector<double> prob_p(n);
+    prob_p=prob_pois(poisson, n);
+    std::vector<double> prob_ldp(n);
+    prob_ldp=prob_ld_deriv(prob, prob_p, n);
+    return prob_ldp;
+  };
 }
