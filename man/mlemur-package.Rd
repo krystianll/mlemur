@@ -7,11 +7,12 @@
   confidence intervals, and P values. Offers graphical user interface built with shiny.
 }
 \details{
-  based on rSalvador by Qi Zheng; GPL 2.0
+  Based on rSalvador by Qi Zheng <https://github.com/eeeeeric/rSalvador>; GPL 2.0
 }
 \author{
 Krystian Lazowski, klazowski@ibb.waw.pl
-Qi Zheng
+
+contributor: Qi Zheng
 
 Maintainer: Krystian Lazowski <klazowski@ibb.waw.pl>
 }

@@ -56,12 +56,35 @@ is drawn from gamma distribution. Wild-type cell growth is taken as deterministi
 as stochastic according to a simple birth-and-death process. If plating efficiency is less than perfect, the success
 of plating each mutant cell is simulated using binomial distribution.
 }
+\details{
+\itemize{
+\item{Final culture size is taken either as a constant or as a random variable drawn from the gamma distribution.}
+\item{Growth (and death if applicable) of the non-mutant cells is assumed to be deterministic and exponential.
+Time of culture growth is calculated per tube using starting and final number of cells as well as non-mutant
+death rate. Average number of mutations, which is proportional to the number of cellular divisions, is calculated
+using average mutation rate, growth rate, death rate, and time of culture growth.}
+\item{The actual number of mutations in the test tube is drawn from Poisson distribution using average number
+of mutations from the previous step.}
+\item{Moments of mutation (expressed in terms of number of individual cell divisions in that moment as a fraction
+of total number of cell divisions at the end of culture growth) are drawn from uniform distribution and then
+mutation epochs are calculated. For each mutant clone, the length of phenotypic lag is drawn from
+Poisson distribution with mean being the average length of phenotypic lag (supplied as a number of generations).
+If a particular mutation epoch exceeds total time of culture growth minus the extent of phenotypic lag,
+the whole mutant lineage is discarded.}
+\item{The size of the mutant clone is drawn from the distribution of the number of cells in a simple
+birth-and-death process using (8.46) in Bailey 1964.}
+\item{If plating is not perfect, the number of mutant colonies on the plates is drawn from binomial distribution.}
+}
+}
 \examples{
 rluria()
 rluria(n=100, rate=1e-7, lag = 2, trim=5000, ret="v")
 rluria(n=50, rate=1e-9, cv=0.5)
 }
 \references{
+Bailey NTJ. The Elements of Stochastic Processes with Applications to the Natural Sciences.
+1st ed. John Wiley & Sons Inc; 1964.
+
 Ycart B, Veziris N. Unbiased estimation of mutation rates under fluctuating final counts. PLoS One.
 2014;9. doi:10.1371/journal.pone.0101434
 

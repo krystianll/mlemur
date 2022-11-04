@@ -15,7 +15,7 @@ drake.formula(data, e = 1, w = 1, poisson = 0, lag = 0, death = 0)
 
 \item{poisson}{average number of residual Poisson-distributed mutations on the plate; a non-negative number.}
 
-\item{lag}{phenotypic lag (*only non-stochastic*); a non-negative number.}
+\item{lag}{phenotypic lag (\strong{only non-stochastic}); a non-negative number.}
 
 \item{death}{death probability of wild-type and mutant cells; a non-negative number smaller than 0.5; relative (d)eath rate
 and death (p)robability are connected by the relation d = p/(1-p); p = d/(1+d).}
@@ -25,7 +25,7 @@ a single non-negative value of m.
 }
 \description{
 The basic formula comes from the Drake paper. Corrections for partial plating,
-phenotypic delay (*only non-stochastic*), residual mutations, and differential growth were taken from other Angerer and Koch.
+phenotypic delay (\strong{only non-stochastic}), residual mutations, and differential growth were taken from other Angerer and Koch.
 Correction for mutant death is based on the Angerer's rationale regarding phenotypic lag, with Newcombe correction
 for extra cellular divisions.
 }

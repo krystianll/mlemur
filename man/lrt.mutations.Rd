@@ -31,7 +31,7 @@ lrt.mutations(
 \arguments{
 \item{datax}{a vector of integer-valued colony counts for strain X.}
 
-\item{datay}{a vector of integer-valued colony counts.}
+\item{datay}{a vector of integer-valued colony counts for strain Y.}
 
 \item{ex}{plating efficiency for strain X; a positive number not bigger than 1.}
 
