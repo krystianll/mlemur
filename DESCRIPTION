@@ -1,8 +1,8 @@
 Package: mlemur
 Type: Package
 Title: MLE MUtatution Rate Calculator
-Version: 0.9.1
-Date: 2022-07-11
+Version: 0.9.2
+Date: 2022-11-04
 Authors@R: c(person("Krystian", "Lazowski", role = c("aut", "cre"),
 	           email = "klazowski@ibb.waw.pl", comment = c(ORCID="0000-0001-5163-7026")),
 	           person("Qi", "Zheng", role = "ctb"))
@@ -11,15 +11,16 @@ Author: Krystian Lazowski [aut, cre] (<https://orcid.org/0000-0001-5163-7026>),
 Maintainer: Krystian Lazowski <klazowski@ibb.waw.pl>
 Description: A tool for calculating maximum likelihood-based mutation rates,
   confidence intervals, and P values. Offers graphical user interface built with shiny.
+  Based on rSalvador by Qi Zheng <https://github.com/eeeeeric/rSalvador>.
 License: GPL (>= 2)
 SystemRequirements: gmp (>=6.2.1), mpfr (>=4.1.0)
 SystemRequirementsNote: 'MPFR' (MP Floating-Point Reliable Library,
                         https://www.mpfr.org/) and 'GMP' (GNU Multiple Precision
                         library, https://gmplib.org/), see >> README.md
-Depends: R (>= 4.1.0), shiny
-Imports: Rcpp (>= 1.0.5), stats, shinyFeedback, shinyWidgets, shinyjs, writexl, readxl, clipr, reactable, Ryacas, boot
+Depends: R (>= 4.2.2), shiny
+Imports: Rcpp (>= 1.0.9), stats, shinyFeedback, shinyWidgets, shinyjs, writexl, readxl, clipr, reactable, Ryacas, boot
 LinkingTo: Rcpp, BH
-RoxygenNote: 7.2.0
+RoxygenNote: 7.2.1
 NeedsCompilation: yes
 StagedInstall: no
 Encoding: UTF-8
