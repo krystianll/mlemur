@@ -275,6 +275,45 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// optim_m_every_Nt
+std::vector<double> optim_m_every_Nt(double current_m, double lower_m, double upper_m, std::vector<double>& R, Rcpp::List& seqs, std::vector<int>& data, const double& k, std::vector<int>& poisson, bool verbose);
+RcppExport SEXP _mlemur_optim_m_every_Nt(SEXP current_mSEXP, SEXP lower_mSEXP, SEXP upper_mSEXP, SEXP RSEXP, SEXP seqsSEXP, SEXP dataSEXP, SEXP kSEXP, SEXP poissonSEXP, SEXP verboseSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< double >::type current_m(current_mSEXP);
+    Rcpp::traits::input_parameter< double >::type lower_m(lower_mSEXP);
+    Rcpp::traits::input_parameter< double >::type upper_m(upper_mSEXP);
+    Rcpp::traits::input_parameter< std::vector<double>& >::type R(RSEXP);
+    Rcpp::traits::input_parameter< Rcpp::List& >::type seqs(seqsSEXP);
+    Rcpp::traits::input_parameter< std::vector<int>& >::type data(dataSEXP);
+    Rcpp::traits::input_parameter< const double& >::type k(kSEXP);
+    Rcpp::traits::input_parameter< std::vector<int>& >::type poisson(poissonSEXP);
+    Rcpp::traits::input_parameter< bool >::type verbose(verboseSEXP);
+    rcpp_result_gen = Rcpp::wrap(optim_m_every_Nt(current_m, lower_m, upper_m, R, seqs, data, k, poisson, verbose));
+    return rcpp_result_gen;
+END_RCPP
+}
+// root_m_every_Nt
+double root_m_every_Nt(double current_m, double lower_m, double upper_m, Rcpp::List& seqs, std::vector<double>& R, std::vector<int>& data, const double& k, std::vector<int>& poisson, const double lalpha, bool verbose);
+RcppExport SEXP _mlemur_root_m_every_Nt(SEXP current_mSEXP, SEXP lower_mSEXP, SEXP upper_mSEXP, SEXP seqsSEXP, SEXP RSEXP, SEXP dataSEXP, SEXP kSEXP, SEXP poissonSEXP, SEXP lalphaSEXP, SEXP verboseSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< double >::type current_m(current_mSEXP);
+    Rcpp::traits::input_parameter< double >::type lower_m(lower_mSEXP);
+    Rcpp::traits::input_parameter< double >::type upper_m(upper_mSEXP);
+    Rcpp::traits::input_parameter< Rcpp::List& >::type seqs(seqsSEXP);
+    Rcpp::traits::input_parameter< std::vector<double>& >::type R(RSEXP);
+    Rcpp::traits::input_parameter< std::vector<int>& >::type data(dataSEXP);
+    Rcpp::traits::input_parameter< const double& >::type k(kSEXP);
+    Rcpp::traits::input_parameter< std::vector<int>& >::type poisson(poissonSEXP);
+    Rcpp::traits::input_parameter< const double >::type lalpha(lalphaSEXP);
+    Rcpp::traits::input_parameter< bool >::type verbose(verboseSEXP);
+    rcpp_result_gen = Rcpp::wrap(root_m_every_Nt(current_m, lower_m, upper_m, seqs, R, data, k, poisson, lalpha, verbose));
+    return rcpp_result_gen;
+END_RCPP
+}
 // optim_m_from_probs
 std::vector<double> optim_m_from_probs(double& current_m, double& lower_m, double& upper_m, double& R, double& k1, double& k2, double& poisson1, double& poisson2, std::vector<double>& seq1, std::vector<double>& seq2, std::vector<double>& prob1, std::vector<double>& prob2, bool verbose);
 RcppExport SEXP _mlemur_optim_m_from_probs(SEXP current_mSEXP, SEXP lower_mSEXP, SEXP upper_mSEXP, SEXP RSEXP, SEXP k1SEXP, SEXP k2SEXP, SEXP poisson1SEXP, SEXP poisson2SEXP, SEXP seq1SEXP, SEXP seq2SEXP, SEXP prob1SEXP, SEXP prob2SEXP, SEXP verboseSEXP) {
@@ -335,6 +374,8 @@ static const R_CallMethodDef CallEntries[] = {
     {"_mlemur_optim_m", (DL_FUNC) &_mlemur_optim_m, 9},
     {"_mlemur_root_m", (DL_FUNC) &_mlemur_root_m, 10},
     {"_mlemur_combo_optim_m", (DL_FUNC) &_mlemur_combo_optim_m, 15},
+    {"_mlemur_optim_m_every_Nt", (DL_FUNC) &_mlemur_optim_m_every_Nt, 9},
+    {"_mlemur_root_m_every_Nt", (DL_FUNC) &_mlemur_root_m_every_Nt, 10},
     {"_mlemur_optim_m_from_probs", (DL_FUNC) &_mlemur_optim_m_from_probs, 13},
     {"_mlemur_prob_mutations", (DL_FUNC) &_mlemur_prob_mutations, 9},
     {NULL, NULL, 0}
