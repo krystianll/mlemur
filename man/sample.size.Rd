@@ -78,7 +78,8 @@ in the likelihood ratio test given prescribed mutation rates and final culture s
 }
 \examples{
 sample.size(power = 0.8, rate1 = 1e-9, rate2 = 2e-9, Nt1 = 1e9, Nt2 = 5e8)
-sample.size(power = c(0.2, 0.5, 0.9), rate1 = 1e-9, rate2 = 5e-9, Nt1 = 1e9, Nt2 = 3e8, e1 = 1, e2 = 0.1)
+sample.size(power = c(0.2, 0.5, 0.9), rate1 = 1e-9, rate2 = 5e-9, Nt1 = 1e9,
+Nt2 = 3e8, e1 = 1, e2 = 0.1)
 }
 \references{
 Gudicha DW., Schmittmann VD. and Vermunt JK. Statistical power of likelihood ratio and Wald tests in latent class models with covariates. Behav. Res. Methods
