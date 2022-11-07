@@ -1,9 +1,12 @@
 ---
+title: "mlemur"
+author: "Krystian Lazowski"
+date: "`r Sys.Date()`"
 output:
   pdf_document: default
   html_document: default
 ---
-# mlemur
+
 ## Instructions (Windows)
 1. Install newest version of R (currently 4.2.2) in the default location from <https://cran.r-project.org/bin/windows/base/>
 
@@ -16,7 +19,7 @@ output:
 2. Locate and run R.exe
 
 3. In the R main window, install required packages: copy the following command to R console and press Enter:
-```
+```{r eval=FALSE}
 install.packages(c("devtools", "Rcpp", "reactable", "readxl", "writexl", "shiny", "shinyFeedback", "shinyWidgets", "shinyjs", "boot", "BH", "hypergeo", "Ryacas"), dependencies = TRUE)
 ```
 You might be asked to confirm by clicking 'Yes' or to select server from which the packages will be downloaded - select the first one
@@ -28,20 +31,20 @@ You might be asked to confirm by clicking 'Yes' or to select server from which t
 1. Locate and run R.exe
 
 2. Install `devtools` package: copy the following command to R console and press Enter:
-```
+```{r eval=FALSE}
 install.packages("devtools", dependencies = TRUE)
 ```
 You might be asked to confirm by clicking 'Yes' or to select server from which the packages will be downloaded - select the first one
 
 3. Install mlemur with all dependencies using the following command:
-```
+```{r eval=FALSE}
 devtools::install_github("krystianll/mlemur", ref = "master", auth_token = "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", dependencies = TRUE)
 ```
 ### Running mlemur
 Mlemur can be run in both text and graphical mode. The graphical mode is initiated in a browser window.
 
 To initiate the graphical mode, use the following command in R:
-```
+```{r eval=FALSE}
 mlemur::mlemur()
 ```
 Alternatively, you can download the following clickable script: <https://github.com/krystianll/mlemur/blob/master/run_mlemur.bat> (You can save the file in any location you choose). If Windows blocks the execution of the file, click "More info" and proceed
@@ -54,7 +57,7 @@ Alternatively, you can download the following clickable script: <https://github.
 2. Don't open R yet. Open Terminal.app. To do this, press and hold Command ⌘ key and then press Space key. Type Terminal and press Enter.
 
 3. In the Terminal window, copy the following command and press Enter:
-```
+```{r eval=FALSE}
 xcode-select --install
 ```
 Then follow the instructions in the new window.
@@ -73,7 +76,7 @@ Then follow the instructions in the new window.
 **Make sure that the file has .tgz extension! If it is saved as .tar, please change the extension by hand.**
 
 3. In the R main window, install required packages: copy the following command to R console and press Enter:
-```
+```{r eval=FALSE}
 install.packages(c("devtools", "Rcpp", "reactable", "readxl", "writexl", "shiny", "shinyFeedback", "shinyWidgets", "shinyjs", "boot", "BH", "hypergeo", "Ryacas"), dependencies = TRUE)
 ```
 You might be asked to confirm by clicking "Yes" or to select server from which the packages will be downloaded - select the first one
@@ -85,46 +88,46 @@ You might be asked to confirm by clicking "Yes" or to select server from which t
 6. Locate the mlemur_0.9.3.tgz file and press Open
 
 Alternative 4-6. If the above doesn't work, in the R main window, select "Misc" in the menu bar at the top of the window and then "Change Working Directory…". Locate the folder containing mlemur_0.9.3.tgz file and press Open. Then in the R console use the following command and press Enter:
-```
+```{r eval=FALSE}
 install.packages("mlemur_0.9.3.tgz")
 ```
 ### Installation using source files (requires compilation)
 1. Open Terminal.app. To do this, press and hold Command ⌘ key and then press Space key. Type Terminal and press Enter.
 
 2. In the Terminal window, copy the following command and press Enter to install homebrew:
-```
+```{r eval=FALSE}
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 ```
 You might be prompted to type your password and press Enter. Press Enter again when asked to accept the creation of new folders. Installation might take several minutes.
 
 3. In the Terminal window, copy the following command and press Enter to install boost libraries:
-```
+```{r eval=FALSE}
 brew install boost
 ```
 4. In the Terminal window, copy the following command and press Enter to install mpfr:
-```
+```{r eval=FALSE}
 brew install mpfr
 ```
 5. Locate and run R.app
 6. Install `devtools` package: copy the following command to R console and press Enter:
-```
+```{r eval=FALSE}
 install.packages("devtools", dependencies = TRUE)
 ```
 You might be asked to confirm by clicking 'Yes' or to select server from which the packages will be downloaded - select the first one
 
 7. Install mlemur with all dependencies using the following command:
-```
+```{r eval=FALSE}
 devtools::install_github("krystianll/mlemur", ref = "master", auth_token = "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", dependencies = TRUE)
 ```
 ### Running mlemur
 Mlemur can be run in both text and graphical mode. The graphical mode is initiated in a browser window.
 
 To initiate the graphical mode, use the following command in R:
-```
+```{r eval=FALSE}
 mlemur::mlemur()
 ```
 Alternatively, you can download the following clickable script: <https://github.com/krystianll/mlemur/blob/master/run_mlemur.command> (You can save the file in any location you choose). Then open the Terminal window and copy the following command:
-```
+```{r eval=FALSE}
 chmod u+x 
 ```
 Make sure there is a space after "x". Drag and drop the run_mlemur.command file to Terminal window and then press Enter. Open the run_mlemur.command file. macOS will still try to block the execution of the file. Click on the Apple logo in the top-left corner of the screen, select System Preferences, then Security & Privacy. Click "Open Anyway" and then confirm by clicking "Open". The file will work from now on.
