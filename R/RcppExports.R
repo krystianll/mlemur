@@ -65,6 +65,14 @@ combo_optim_m <- function(current_m, lower_m, upper_m, R, seq1, seq2, len1, len2
     .Call(`_mlemur_combo_optim_m`, current_m, lower_m, upper_m, R, seq1, seq2, len1, len2, data1, data2, k1, k2, poisson1, poisson2, verbose)
 }
 
+optim_m_every_Nt <- function(current_m, lower_m, upper_m, R, seqs, data, k, poisson, verbose = FALSE) {
+    .Call(`_mlemur_optim_m_every_Nt`, current_m, lower_m, upper_m, R, seqs, data, k, poisson, verbose)
+}
+
+root_m_every_Nt <- function(current_m, lower_m, upper_m, seqs, R, data, k, poisson, lalpha, verbose = FALSE) {
+    .Call(`_mlemur_root_m_every_Nt`, current_m, lower_m, upper_m, seqs, R, data, k, poisson, lalpha, verbose)
+}
+
 optim_m_from_probs <- function(current_m, lower_m, upper_m, R, k1, k2, poisson1, poisson2, seq1, seq2, prob1, prob2, verbose = FALSE) {
     .Call(`_mlemur_optim_m_from_probs`, current_m, lower_m, upper_m, R, k1, k2, poisson1, poisson2, seq1, seq2, prob1, prob2, verbose)
 }

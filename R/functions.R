@@ -616,6 +616,208 @@ lrt.mutations <- function(datax, datay, ex=1, ey=1, wx=1, wy=1, lagx=0, lagy=0, 
   return(pval)
 }
 
+#' Estimate mutation rate using Maximum Likelihood Method and calculate 95 percent CI using inverted Likelihood Ratio Test
+#' using pairs of colony counts on selective and non-selective medium
+#' 
+#' @description This function finds Maximum Likelihood Estimate of mu, the average mutation rate.
+#' Then it proceeds to find Likelihood Ratio-based confidence limits for mu. The algorithm uses pairs of colony
+#' counts on selective and non-selective medium for each test tube. It uses a hybrid Newton-bisection
+#' algorithm as well as arbitrary-precision arithmetic if necessary for better stability.
+#'
+#' @param data a vector of integer-valued colony counts.
+#' @param e plating efficiency; a positive number not bigger than 1.
+#' @param w mutant relative fitness; a positive number.
+#' @param lag phenotypic lag; a non-negative number.
+#' @param poisson_rate average mutation rate of Poisson-distributed mutations on the plate; a non-negative number smaller than 1.
+#' @param death death probability of wild-type and mutant cells; a non-negative number smaller than 0.5; relative (d)eath rate
+#' and death (p)robability are connected by the relation d = p/(1-p); p = d/(1+d).
+#' @param inoculum number of cells in the inoculum; a non-negative integer.
+#' @param Nt a vector of integer-valued culture sizes; must be of the same length as data.
+#' @param confint if TRUE (default), confidence intervals at ci.level will be calculated.
+#' @param ci.level confidence interval size, default 0.95.
+#' @param verbose if TRUE, mlemur will print messages to the console.
+#' @param show_logprob if TRUE and confint is FALSE, the function will return the point estimate of mutation rate and
+#' the value of the log-likelihood function. This is mostly for internal use.
+#' @return a single non-negative value of m, or a vector of length 3 containing MLE of m as well lower and upper limit
+#' of 95 percent CI.
+#' @export
+#' @examples
+#' mle.rate(data = c(14, 20, 59, 46, 77, 38, 86, 17, 13, 25), Nt = c(1030417500,
+#' 635899434, 721044961, 1496257034, 1276590167, 1977307240, 954768054,
+#' 1192512084, 632462708, 748020573))
+#' @references
+#' Zheng Q. Statistical and algorithmic methods for fluctuation analysis with SALVADOR as an implementation. Math Biosci.
+#' 2002;176: 237–252. doi:10.1016/S0025-5564(02)00087-1
+#' @references
+#' Zheng Q. New algorithms for Luria-Delbrück fluctuation analysis. Math Biosci.
+#' 2005;196: 198–214. doi:10.1016/j.mbs.2005.03.011
+#' @references
+#' Zheng Q. On Bartlett’s formulation of the Luria-Delbrück mutation model. Math Biosci.
+#' 2008;215: 48–54. doi:10.1016/j.mbs.2008.05.005
+#' @references
+#' Zheng Q. rSalvador: An R package for the fluctuation experiment. G3 Genes, Genomes, Genet.
+#' 2017;7: 3849–3856. doi:10.1534/g3.117.300120
+mle.rate <- function(data, e=1, w=1, lag=0, poisson_rate=0, death=0, inoculum=0, Nt, confint=TRUE, ci.level=0.95, verbose=FALSE, show_logprob=FALSE) {
+  k <- 0
+  
+  if (length(data) != length(Nt)) {stop("Lengths of 'data' and 'Nt' differ.")}
+  max <- which(Nt == max(Nt))[1]
+  data <- c(data[max], data[-max])
+  Nt <- c(Nt[max], Nt[-max])
+  R <- (Nt-inoculum)/(Nt[1]-inoculum)
+  phi <- inoculum/Nt
+  
+  seqs <- lapply(1:length(data), function(x) aux.seq(e = e, w = w, death = death, lag = lag, phi = phi[x], n = data[x]+1))
+  if (any(is.na(seqs))) {if (verbose) message("m: failed to get the sequence"); if (confint==TRUE) {return(c(NA,NA,NA))} else {return(c(NA))}}
+  
+  poisson <- poisson_rate*(Nt-data)*e
+  
+  # mutants in the culture
+  mg <- as.vector(na.exclude(m_guess(data = data, e = e, w = w, lag = lag, death = death, poisson = mean(poisson))))
+  if (length(mg)==0) mg <- 1
+  
+  m.est <- optim_m_every_Nt(current_m = mg[1], lower_m = mg[1]/10, upper_m = mg[1]*10, R = R, seqs = seqs, data = data, k = k, poisson = poisson, verbose = verbose)
+  m1 <- m.est[1]
+  
+  if (m1 < 0) {if (verbose) message("m: couldn't estimate"); if (confint==TRUE) {return(c(NA,NA,NA))} else {return(c(NA))}}
+  else if (verbose) {message(paste("m: found MLE", m1))}
+  
+  if (confint==FALSE) {
+    if (show_logprob) return(c(m1/(Nt[1]-inoculum), m.est[4])) else return(m1/(Nt[1]-inoculum))
+  } else {
+    # confidence intervals
+    if (verbose) message(paste("m: constructing confidence intervals at the level of significance \U03B1=", (ci.level)*100, "%", sep = ""))
+    chi <- qchisq(ci.level,1)
+    if (m1 != 0) {
+      U <- m.est[2]
+      J <- m.est[3]
+      loglik <- m.est[4]
+      root <- sqrt(chi/J)
+    } else {
+      loglik <- sum(unlist(lapply(1:length(data), function(x) logprob(m = 1e-200, len = data[x]+1, data = data[x], seq = seqs[[x]], k = k, poisson = poisson[x]))))
+      if (!is.finite(loglik)) {loglik <- sum(unlist(lapply(1:length(data), function(x) logprob_boost(xm = 1e-200, len = data[x]+1, data = data[x], seq = seqs[[x]], xk = k, xpoisson = poisson[x]))))}
+    }
+    logprobtail <- loglik-0.5*chi
+    
+    # lower interval
+    if (m1 == 0) {
+      m1.low <- 0
+    } else {
+      m1.low <- root_m_every_Nt(current_m = m1-0.5*root, lower_m = max(m1-2*root, m1*0.1), upper_m = m1, R = R, seqs = seqs, data = data, k = k, poisson = poisson, lalpha = logprobtail, verbose = verbose)
+      if (!is.finite(m1.low) | m1.low < 0) {if (verbose) message("m_low: culdn't estimate"); m1.low <- NA}
+    }
+    if (verbose) {message(paste("m_low: found MLE", m1.low))}
+    
+    # upper interval
+    m1.up <- root_m_every_Nt(current_m = ifelse(m1 != 0, m1+0.5*root, 0.1), lower_m = ifelse(m1 != 0, m1, 0.01), upper_m = ifelse(m1 != 0, m1+2*root, 1), R = R, seqs = seqs, data = data, k = k, poisson = poisson, lalpha = logprobtail, verbose = verbose)
+    if (!is.finite(m1.up) | m1.up < 0) {if (verbose) message("m_up: couldn't estimate"); m1.up <- NA}
+    else if (verbose) {message(paste("m_up: found MLE", m1.up))}
+    
+    return(c(m1/(Nt[1]-inoculum), m1.low/(Nt[1]-inoculum), m1.up/(Nt[1]-inoculum)))
+  }
+}
+
+#' Calculate p-values using Likelihood Ratio Test using pairs of colony counts on selective and non-selective medium
+#' 
+#' @description This function calculates LRT-based p-values to assess the statistical significance of the
+#' differences between two mutation rates (1 and 2). The algorithm uses pairs of colony
+#' counts on selective and non-selective medium for each test tube. It uses a hybrid Newton-bisection
+#' algorithm as well as arbitrary-precision arithmetic if necessary for better stability.
+#' @param data1 a vector of integer-valued colony counts for strain 1.
+#' @param data2 a vector of integer-valued colony counts for strain 2.
+#' @param e1 plating efficiency for strain 1; a positive number not bigger than 1.
+#' @param e2 plating efficiency for strain 2; a positive number not bigger than 1.
+#' @param w1 mutant relative fitness for strain 1; a positive number.
+#' @param w2 mutant relative fitness for strain 2; a positive number.
+#' @param lag1 phenotypic lag for strain 1; a non-negative number.
+#' @param lag2 phenotypic lag for strain 2; a non-negative number.
+#' @param poisson_rate1 average mutation rate of Poisson-distributed mutations on the plate for strain 1; a non-negative number.
+#' @param poisson_rate2 average mutation rate of Poisson-distributed mutations on the plate for strain 2; a non-negative number.
+#' @param death1 death probability of wild-type and mutant cells for strain 1; a non-negative number smaller than 0.5;
+#' relative (d)eath rate and death (p)robability are connected by the relation d = p/(1-p); p = d/(1+d).
+#' @param death2 death probability of wild-type and mutant cells for strain 2; a non-negative number smaller than 0.5;
+#' relative (d)eath rate and death (p)robability are connected by the relation d = p/(1-p); p = d/(1+d).
+#' @param inoculum1 number of cells in the inoculum for strain 1; a non-negative integer
+#' @param inoculum2 number of cells in the inoculum for strain 2; a non-negative integer
+#' @param Nt1 a vector of integer-valued culture sizes for strain 1; must be of the same length as data.
+#' @param Nt2 a vector of integer-valued culture sizes for strain 2; must be of the same length as data.
+#' @param verbose if TRUE, mlemur will print messages to the console.
+#' @return a single value of p-value between 0 and 1.
+#' @export
+#' @examples
+#' lrt.rate(data1 = c(14, 20, 59, 46, 77, 38, 86, 17, 13, 25),
+#' Nt1 = c(1030417500, 635899434, 721044961, 1496257034, 1276590167,
+#' 1977307240, 954768054, 1192512084, 632462708, 748020573), data2 = c(387, 630,
+#' 140, 50, 1187, 18, 161, 30, 32, 61), e2 = 0.5, Nt2 = c(3543784628,
+#' 2384685853, 4744886069, 2758252418, 4388557268, 1098581801, 4363192697,
+#' 1314405541, 1677598351, 3420509139))
+#' @references
+#' Zheng Q. Statistical and algorithmic methods for fluctuation analysis with SALVADOR as an implementation. Math Biosci.
+#' 2002;176: 237–252. doi:10.1016/S0025-5564(02)00087-1
+#' @references
+#' Zheng Q. New algorithms for Luria-Delbrück fluctuation analysis. Math Biosci.
+#' 2005;196: 198–214. doi:10.1016/j.mbs.2005.03.011
+#' @references
+#' Zheng Q. On Bartlett’s formulation of the Luria-Delbrück mutation model. Math Biosci.
+#' 2008;215: 48–54. doi:10.1016/j.mbs.2008.05.005
+#' @references
+#' Zheng Q. Comparing mutation rates under the Luria–Delbrück protocol. Genetica.
+#' 2016;144: 351–359. doi:10.1007/s10709-016-9904-3
+#' @references
+#' Zheng Q. rSalvador: An R package for the fluctuation experiment. G3 Genes, Genomes, Genet.
+#' 2017;7: 3849–3856. doi:10.1534/g3.117.300120
+lrt.rate <- function(data1, data2, e1=1, e2=1, w1=1, w2=1, lag1=0, lag2=0, poisson_rate1=0, poisson_rate2=0,
+                     death1=0, death2=0, inoculum1=0, inoculum2=0, Nt1, Nt2, verbose=FALSE) {
+  
+  M1 <- mle.rate(data = data1, e = e1, w=w1, lag=lag1, poisson_rate=poisson_rate1, death=death1, inoculum=inoculum1, Nt=Nt1, confint = FALSE, verbose=verbose, show_logprob = TRUE)
+  M2 <- mle.rate(data = data2, e = e2, w=w2, lag=lag2, poisson_rate=poisson_rate2, death=death2, inoculum=inoculum2, Nt=Nt2, confint = FALSE, verbose=verbose, show_logprob = TRUE)
+  if (!any(is.finite(M1)) | !any(is.finite(M2))) {if (verbose) message("Couldn't estimate mutation rates"); return(NA)}
+  if (verbose) message(paste("Estimated mutation rates are", M1[1], "and", M2[1]))
+  
+  # mutation rates
+  k <- 0
+  Nt <- c(Nt1-inoculum1, Nt2-inoculum2)
+  data <- c(data1, data2)
+  
+  if (length(data1) != length(Nt1)) {stop("Lengths of 'data1' and 'Nt1' differ.")}
+  if (length(data2) != length(Nt2)) {stop("Lengths of 'data2' and 'Nt2' differ.")}
+  max <- which(Nt == max(Nt))[1]
+  data <- c(data[max], data[-max])
+  Nt <- c(Nt[max], Nt[-max])
+  R <- Nt/Nt[1]
+  phi <- c(inoculum1/Nt1, inoculum2/Nt2)
+  phi <- c(phi[max], phi[-max])
+  
+  seqs <- c(lapply(1:length(data1), function(x) aux.seq(e = e1, w = w1, death = death1, lag = lag1, phi = (inoculum1/Nt1)[x], n = data1[x]+1)),
+            lapply(1:length(data2), function(x) aux.seq(e = e2, w = w2, death = death2, lag = lag2, phi = (inoculum2/Nt2)[x], n = data2[x]+1)))
+  if (any(is.na(seqs))) {if (verbose) message("m: failed to get the sequence"); if (confint==TRUE) {return(c(NA,NA,NA))} else {return(c(NA))}}
+  seqs <- c(seqs[max], seqs[-max])
+  
+  poisson <- c(poisson_rate1*(Nt1-data1)*e1, poisson_rate2*(Nt2-data2)*e2)
+  
+  # combined mutation rate
+  m.est <- optim_m_every_Nt(current_m = (M1[1]+M2[1])/2*Nt[1], lower_m = min(c(M1[1],M2[1]))*Nt[1], upper_m = max(c(M1[1],M2[1]))*Nt[1], R = R, seqs = seqs, data = data, k = k, poisson = poisson, verbose = verbose)
+  if (m.est[1] < 0) {if (verbose) message("m_combined: couldn't estimate m"); return(NA)}
+  
+  MC <- m.est[1]
+  
+  if (verbose) message(paste("m_combined: obtained estimate", MC))
+  
+  # log likelihood functions
+  if (MC != 0) {
+    l0 <- m.est[4]
+  } else {
+    l0 <- sum(unlist(lapply(1:length(data), function(x) logprob(m = 1e-200, len = data[x]+1, data = data[x], seq = seqs[[x]], k = k, poisson = poisson[x]))))
+    if (!is.finite(l0)) {l0 <- sum(unlist(lapply(1:length(data), function(x) logprob_boost(xm = 1e-200, len = data[x]+1, data = data[x], seq = seqs[[x]], xk = k, xpoisson = poisson[x]))))}
+    if(!(all(is.finite(l0)))) {message("loglikelihood: non-numeric value encountered"); return(NA)}
+  }
+  l1 <- M1[2]+M2[2]
+  
+  chi <- -2*(l0-l1)
+  pval <- pchisq(chi,1,lower.tail = F)
+  return(pval)
+}
+
 #' Calculate profile likelihood confidence intervals for an arbitrary function of mutation rates
 #'
 #' @description Inspired by Zheng 2021, this function calculates MLE and profile likelihood confidence intervals
@@ -1029,7 +1231,8 @@ power.est <- function(n1 = 30, n2 = NULL, rate1 = 1e-9, rate2 = 2e-9, Nt1 = 1e9,
 #' @examples
 #' sample.size(power = 0.8, rate1 = 1e-9, rate2 = 2e-9, Nt1 = 1e9, Nt2 = 5e8)
 #' @examples
-#' sample.size(power = c(0.2, 0.5, 0.9), rate1 = 1e-9, rate2 = 5e-9, Nt1 = 1e9, Nt2 = 3e8, e1 = 1, e2 = 0.1)
+#' sample.size(power = c(0.2, 0.5, 0.9), rate1 = 1e-9, rate2 = 5e-9, Nt1 = 1e9,
+#' Nt2 = 3e8, e1 = 1, e2 = 0.1)
 #' @references
 #' Gudicha DW., Schmittmann VD. and Vermunt JK. Statistical power of likelihood ratio and Wald tests in latent class models with covariates. Behav. Res. Methods
 #' 2017;49: 1824–1837. doi:10.3758/s13428-016-0825-y
