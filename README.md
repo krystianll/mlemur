@@ -1,8 +1,3 @@
----
-output:
-  pdf_document: default
-  html_document: default
----
 # mlemur
 ## Instructions (Windows)
 1. Install newest version of R (currently 4.2.2) in the default location from <https://cran.r-project.org/bin/windows/base/>
