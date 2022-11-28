@@ -194,17 +194,17 @@ std::vector<double> aux_seq_integrate_s(double e=1, double w=1, double d=0, doub
   int k;
   std::vector<double> res(n+1);
   
-  if ((e==1) & (d==0)) {
+  if (e==1 & d==0) {
     auto f = [&r, &k](double x) {
       return (r*pow(x,r)*pow(1.-x,k-1));
     };
     
     res[0]=-exp(-lag+pow(2.,-r)*lag);
     for (k=1;k<=n;++k) {
-      proxy=0;
-      factorial=1;
-      l=0;
-      chi=1;
+      proxy=0.0;
+      factorial=1.0;
+      l=0.0;
+      chi=1.0;
       do {
         res[k]=proxy;
         proxy+=factorial*tanh.integrate(f, pow(phi,w), chi)/(1.-phi*pow(chi,-r));
@@ -212,7 +212,7 @@ std::vector<double> aux_seq_integrate_s(double e=1, double w=1, double d=0, doub
         chi*=0.5;
         if (chi < pow(phi,w)) {break;}
         factorial*=lag/l;
-      } while ((std::abs(res[k]-proxy) > std::numeric_limits<double>::epsilon()) || (l < lag));
+      } while ((std::abs(res[k]-proxy) > std::numeric_limits<double>::epsilon()) || (l < lag) || ((lag == 0) && (l < 2)));
       res[k]*=exp(-lag);
     };
     
@@ -224,10 +224,10 @@ std::vector<double> aux_seq_integrate_s(double e=1, double w=1, double d=0, doub
       return (r*pow(1.-d,2)*pow(x,r)*e/pow(e+(1.-d-e)*x,2)*pow((1.-x)/(1.+(1.-d-e)/e*x),k-1));
     };
     
-    proxy=0;
-    factorial=1;
-    l=0;
-    chi=1;
+    proxy=0.0;
+    factorial=1.0;
+    l=0.0;
+    chi=1.0;
     do {
       res[0]=proxy;
       proxy+=factorial*tanh.integrate(f1, pow(phi,w), chi)/(1.-phi*pow(chi,-r));
@@ -240,10 +240,10 @@ std::vector<double> aux_seq_integrate_s(double e=1, double w=1, double d=0, doub
     res[0]-=exp(-lag+pow(2.,-r)*lag);
     
     for (k=1;k<=n;++k) {
-      proxy=0;
-      factorial=1;
-      l=0;
-      chi=1;
+      proxy=0.0;
+      factorial=1.0e0;
+      l=0.0;
+      chi=1.0;
       do {
         res[k]=proxy;
         proxy+=factorial*tanh.integrate(f, pow(phi,w), chi)/(1.-phi*pow(chi,-r));
@@ -251,7 +251,7 @@ std::vector<double> aux_seq_integrate_s(double e=1, double w=1, double d=0, doub
         chi*=0.5;
         if (chi < pow(phi,w)) {break;}
         factorial*=lag/l;
-      } while ((std::abs(res[k]-proxy) > std::numeric_limits<double>::epsilon()) || (l < lag));
+      } while ((std::abs(res[k]-proxy) > std::numeric_limits<double>::epsilon()) || (l < lag) || ((lag == 0) && (l < 2)));
       res[k]*=exp(-lag);
     };
   };
@@ -2191,12 +2191,12 @@ std::vector<double> optim_m_from_probs(double &current_m, double &lower_m, doubl
 std::vector<double> prob_mutations(double m, int n, double e=1, double w=1, double cv=0, double death=0, double lag=0, double phi=0, double poisson=0){
   std::vector<double> seq(n);
   std::vector<double> prob(n);
-
-  if ((death==0) & (lag==0) & (phi==0)) {
+  
+  if (death==0 & lag==0 & phi==0) {
     seq=aux_seq(e, w, n-1);
-  } else if ((lag!=0) & (w==1) & (death==0) & (phi==0)) {
+  } else if (lag!=0 & w==1 & death==0 & phi==0) {
     seq=aux_seq_lag_s_ext(e, lag, n-1);
-  } else if ((death!=0) & (lag==0) & (phi==0)) {
+  } else if (death!=0 & lag==0 & phi==0) {
     seq=aux_seq_death_ext(e, w, death/(1.-death), n-1);
   } else {
     seq=aux_seq_integrate_s(e, w, death/(1.-death), lag, phi, n-1);
@@ -2222,3 +2222,4 @@ std::vector<double> prob_mutations(double m, int n, double e=1, double w=1, doub
     return prob_ldp;
   };
 }
+
