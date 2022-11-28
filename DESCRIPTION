@@ -1,7 +1,7 @@
 Package: mlemur
 Type: Package
 Title: MLE MUtatution Rate Calculator
-Version: 0.9.3
+Version: 0.9.5
 Date: 2022-11-07
 Authors@R: c(person("Krystian", "Lazowski", role = c("aut", "cre"),
 	           email = "klazowski@ibb.waw.pl", comment = c(ORCID="0000-0001-5163-7026")),
@@ -18,9 +18,9 @@ SystemRequirementsNote: 'MPFR' (MP Floating-Point Reliable Library,
                         https://www.mpfr.org/) and 'GMP' (GNU Multiple Precision
                         library, https://gmplib.org/), see >> README.md
 Depends: R (>= 4.1.0), shiny
-Imports: Rcpp (>= 1.0.9), stats, shinyFeedback, shinyWidgets, shinyjs, writexl, readxl, clipr, reactable, Ryacas, boot
+Imports: Rcpp (>= 1.0.9), stats, utils, shinyFeedback, shinyWidgets, shinyjqui, shinyjs, writexl, readxl, clipr, reactable, Ryacas, boot
 LinkingTo: Rcpp, BH
-RoxygenNote: 7.2.1
+RoxygenNote: 7.2.2
 NeedsCompilation: yes
 StagedInstall: yes
 Encoding: UTF-8
