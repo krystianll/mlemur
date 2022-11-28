@@ -4,7 +4,20 @@
 \alias{mle.fold}
 \title{Calculate profile likelihood confidence intervals for an arbitrary function of mutation rates}
 \usage{
-mle.fold(data, e = NULL, w = NULL, cv = NULL, Nt = NULL, fun = "fold X1/X2")
+mle.fold(
+  data,
+  e = NULL,
+  w = NULL,
+  lag = NULL,
+  poisson = NULL,
+  death = NULL,
+  phi = NULL,
+  cv = NULL,
+  Nt = NULL,
+  fun = "fold X1/X2",
+  ci.level = 0.95,
+  verbose = FALSE
+)
 }
 \arguments{
 \item{data}{a list of length 2 to 6 containing numeric vectors with colony counts.}
@@ -12,6 +25,14 @@ mle.fold(data, e = NULL, w = NULL, cv = NULL, Nt = NULL, fun = "fold X1/X2")
 \item{e}{a list or vector of length 2 to 6 (same as data) containing respective values of plating efficiency.}
 
 \item{w}{a list or vector of length 2 to 6 (same as data) containing respective values of relative mutant fitness.}
+
+\item{lag}{a list or vector of length 2 to 6 (same as data) containing respective values of phenotypic lag.}
+
+\item{poisson}{a list or vector of length 2 to 6 (same as data) containing respective values of the number of residual mutations.}
+
+\item{death}{a list or vector of length 2 to 6 (same as data) containing respective values of relative death rates.}
+
+\item{phi}{a list or vector of length 2 to 6 (same as data) containing respective values of inoculum sizes as a fraction of total culture sizes.}
 
 \item{cv}{a list or vector of length 2 to 6 (same as data) containing respective values of coefficient of variation.}
 
@@ -22,10 +43,15 @@ vector of length 1 containing either one of default options ("fold X1/X2", "subt
 "double fold (X1/X2)/(X3/X4)", "background subtraction fold (X1-X2)/(X3-X2)") or a user-defined function containing
 phrases X1, X2, X3, X4, X5, X6, which denote mutation rates for Strain 1, Strain 2, ... . Only addition +, subtraction -,
 multiplication *, and division /, are currently supported.}
+
+\item{ci.level}{confidence interval size, default 0.95.}
+
+\item{verbose}{if TRUE, mlemur will print messages to the console.}
 }
 \value{
-a vector of length 3 containg MLE of an arbitrary function of mutation rates as well as lower and upper
-profile likelihood confidence limits.
+a list containing two elements: "fun", a vector of length 3 containg MLE of an arbitrary
+function of mutation rates as well as lower and upper profile likelihood confidence limits;
+"rates", a vector containing MLEs of rates used to calculate the value of fun.
 }
 \description{
 Inspired by Zheng 2021, this function calculates MLE and profile likelihood confidence intervals
