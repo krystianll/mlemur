@@ -2,10 +2,17 @@ mlemurUI <- function(request) {
   fluidPage(
     shinyjs::useShinyjs(),
     shinyFeedback::useShinyFeedback(),
+    withMathJax(),
     tags$head(
       tags$link(rel= "stylesheet", type = "text/css", href = "www/bootstrap.css"),
       tags$script(src = "www/javascript.js"),
-      tags$link(rel="shortcut icon", href="www/mlemur.ico")
+      tags$link(rel="shortcut icon", href="www/mlemur.ico"),
+      tags$div(HTML("<script type='text/x-mathjax-config'>
+                                      MathJax.Hub.Config({
+                                      tex2jax: {inlineMath: [['$','$']]}
+                                      });
+                                     </script>
+                                    "))
     ),
     a(name="top"),
     navbarPage(fluid = FALSE,
@@ -14,7 +21,7 @@ mlemurUI <- function(request) {
                windowTitle="mlemur: MLE Mutation Rate Calculator",
                footer = column(12,
                                hr(),
-                               HTML("<center>mlemur: MLE Mutation Rate Calculator (beta) | 2022 | GPL-2</center>"),
+                               HTML("<center>mlemur: MLE Mutation Rate Calculator v 1.0 | 2022 | GPL-2</center>"),
                                br(),
                                br()
                ),
@@ -29,7 +36,7 @@ mlemurUI <- function(request) {
                      7,
                      settingsPlatingUI("SettingsRate", c(0, 1, 1)),
                      hr(),
-                     countsPlatingUI("CountsRate", "SettingsRate", FALSE, usePreset = 1),
+                     countsPlatingUI("CountsRate", "SettingsRate", FALSE, usePreset = 1, defaultSettings = c(0, 1, 1)),
                      fluidRow(
                        column(
                          4,
@@ -130,12 +137,12 @@ mlemurUI <- function(request) {
                        column(
                          6,
                          h4(HTML("<b>Strain 1</b>")),
-                         countsPlatingUI("CountsStrain1", "SettingsPval", TRUE, usePreset = 1),
+                         countsPlatingUI("CountsStrain1", "SettingsPval", TRUE, usePreset = 1, defaultSettings = c(0, 1, 2)),
                        ),
                        column(
                          6,
                          h4(HTML("<b>Strain 2</b>")),
-                         countsPlatingUI("CountsStrain2", "SettingsPval", TRUE, usePreset = 2),
+                         countsPlatingUI("CountsStrain2", "SettingsPval", TRUE, usePreset = 2, defaultSettings = c(0, 1, 2)),
                        )
                      ),
                      br(),
@@ -183,7 +190,17 @@ mlemurUI <- function(request) {
                               reactable::reactableOutput("tablePvalue"),
                               hr(),
                               htmlOutput("pvalueinfo"),
-                              textOutput("effsizeinfo"),
+                              br(),
+                              fluidRow(
+                                column(8,
+                                       offset = 2,
+                                       div(actionButton(inputId = "sendToPower",
+                                                        label = "Send for power analysis",
+                                                        style = "text-align:center",
+                                                        icon = icon("paper-plane"),
+                                                        width = "100%"))
+                                )
+                              ),
                               br(),
                               hr(),
                               abbrevsUI("abbrevspval", TRUE)
@@ -290,8 +307,8 @@ mlemurUI <- function(request) {
                         ))),
                         hr(),
                         "XLS(X) files only! For instructions, check Help, or see example.",
-                        a(href="www/example.xlsx", HTML("<i class=\"fa fa-download\" aria-hidden=\"true\"></i> Download example with comments"), download=NA, target="_blank"),
-                        a(href="www/template.xlsx", HTML("<i class=\"fa fa-download\" aria-hidden=\"true\"></i> Download empty template to fill"), download=NA, target="_blank"),
+                        a(href="example.xlsx", HTML("<i class=\"fa fa-download\" aria-hidden=\"true\"></i> Download example with comments"), download=NA, target="_blank"),
+                        a(href="template.xlsx", HTML("<i class=\"fa fa-download\" aria-hidden=\"true\"></i> Download empty template to fill"), download=NA, target="_blank"),
                         fluidRow(
                           column(4,
                                  offset = 4,
@@ -447,21 +464,243 @@ mlemurUI <- function(request) {
                           )
                         ),
                         br()
-            #             #### Help Tab ####
-            #             tabPanel("Help",
-            #                      titlePanel("Help"),
-            #                      hr(),
-            #                      withMathJax(),
-            #                      tags$div(HTML("<script type='text/x-mathjax-config'>
-            # MathJax.Hub.Config({
-            # tex2jax: {inlineMath: [['$','$']]}
-            # });
-            # </script>
-            # ")),
-            # div(
-            #   includeHTML(system.file("www", "help.txt", package = "mlemur"))
-            # )
-            #             )
+               ),
+               #### Fold Tab ####
+               tabPanel(
+                 title = HTML("Fold"),
+                 titlePanel(div(HTML(
+                   "Confidence intervals for fold or other function of data"
+                 ))),
+                 hr(),
+                 fluidRow(
+                   column(
+                     7,
+                     fluidRow(
+                       column(
+                         9,
+                         selectInput(inputId = "FoldUsePreset", label = "Use one of the pre-defined functions",
+                                     choices = c(list("-" = 0,
+                                                      "Strain 1 / Strain 2" = 1,
+                                                      "Strain 1 - Strain 2" = 2,
+                                                      "(Strain 1 / Strain 2) / (Strain 3 / Strain 4)" = 3,
+                                                      "(Strain 1 - Strain 3) / (Strain 2 - Strain 3)" = 4)),
+                                     width = "100%", selected = 1)
+                       ),
+                       column(
+                         3,
+                         HTML('<label class = "control-label"></label>'),
+                         actionButton("FoldClear", label = "Clear equation", icon = icon("trash", lib = "font-awesome"), style = "height: 100%;")
+                       )
+                     ),
+                     br(),
+                     div(
+                       class = "panel-body bg-alt",
+                       fluidRow(
+                         column(
+                           12,
+                           shinyjqui::orderInput(inputId = 'FoldEquation', label = "Or drag and drop items to the equation field", items = c("Strain 1", "/", "Strain 2"), item_class = "danger", style = "min-height: 60px; width: 100%; padding: 8px 12px; font-size: 14px; line-height: 1.42857143; color: #3D441E; background-color: #f9f9f9; background-image: none; border: 1px solid #cccccc; border-radius: 10px; box-shadow: inset 0 3px 10px rgba(0, 0, 0, 0.075); -webkit-box-shadow: inset 0 3px 10px rgba(0, 0, 0, 0.075); overflow-x: auto; overflow-y: hidden; white-space: nowrap;", placeholder = 'Drag items here...'),
+                         )
+                       ),
+                       shinyjqui::orderInput(inputId = 'FoldStrains', label = 'Strains', items = sapply(1:6, function(x) paste("Strain", x)),
+                                             as_source = TRUE, connect = 'FoldEquation', item_class = "danger", width = "100%"),
+                       shinyjqui::orderInput(inputId = 'FoldOperators', label = 'Operators', items = c("+", "-", "*", "/", "(", ")"),
+                                             as_source = TRUE, connect = 'FoldEquation',  item_class = "danger", width = "100%")
+                     ),
+                     br(),
+                     shinyjs::hidden(
+                       sliderInput(inputId = "FoldNumberOfStrains", label = "Number of strains", min = 2, max = 6, value = 2, step = 1)
+                     ),
+                     hr(),
+                     settingsPlatingUI("SettingsFold", c(0, 1, 2)),
+                     hr(),
+                     fluidRow(
+                       style = "display: flex!important; overflow-x: auto;",
+                       column(
+                         6,
+                         style = "min-width: 300px;",
+                         h4(HTML("<b>Strain 1</b>")),
+                         countsPlatingUI("CountsStrain1Fold", "SettingsFold", TRUE, usePreset = 1, defaultSettings = c(0, 1, 2)),
+                       ),
+                       column(
+                         6,
+                         style = "min-width: 300px;",
+                         h4(HTML("<b>Strain 2</b>")),
+                         countsPlatingUI("CountsStrain2Fold", "SettingsFold", TRUE, usePreset = 2, defaultSettings = c(0, 1, 2)),
+                       ),
+                       shinyjs::hidden(
+                         column(
+                           6,
+                           id = "FoldColumn3",
+                           style = "min-width: 300px;",
+                           h4(HTML("<b>Strain 3</b>")),
+                           countsPlatingUI("CountsStrain3Fold", "SettingsFold", TRUE, usePreset = 1, defaultSettings = c(0, 1, 2)),
+                         )
+                       ),
+                       shinyjs::hidden(
+                         column(
+                           6,
+                           id = "FoldColumn4",
+                           style = "min-width: 300px;",
+                           h4(HTML("<b>Strain 4</b>")),
+                           countsPlatingUI("CountsStrain4Fold", "SettingsFold", TRUE, usePreset = 2, defaultSettings = c(0, 1, 2)),
+                         )
+                       ),
+                       shinyjs::hidden(
+                         column(
+                           6,
+                           id = "FoldColumn5",
+                           style = "min-width: 300px;",
+                           h4(HTML("<b>Strain 5</b>")),
+                           countsPlatingUI("CountsStrain5Fold", "SettingsFold", TRUE, usePreset = 2, defaultSettings = c(0, 1, 2)),
+                         )
+                       ),
+                       shinyjs::hidden(
+                         column(
+                           6,
+                           id = "FoldColumn6",
+                           style = "min-width: 300px;",
+                           h4(HTML("<b>Strain 6</b>")),
+                           countsPlatingUI("CountsStrain6Fold", "SettingsFold", TRUE, usePreset = 2, defaultSettings = c(0, 1, 2)),
+                         )
+                       )
+                     ),
+                     br(),
+                     fluidRow(
+                       column(
+                         4,
+                         shinyFeedback::loadingButton(
+                           "calculate5",
+                           label = HTML("<i class = \"fas fa-calculator\"></i> Calculate"),
+                           style = "width:100%;",
+                           loadingLabel = "Calculating\U2026"
+                         ),
+                         br(),
+                         br()
+                       ),
+                       column(
+                         4,
+                         actionButton("erase5",
+                                      label = "Clear all cells",
+                                      width = "100%",
+                                      icon = icon("trash", lib = "font-awesome")
+                         ),
+                         br(),
+                         br()
+                       ),
+                       column(
+                         4,
+                         actionButton("sample5",
+                                      label = "Load sample",
+                                      width = "100%",
+                                      icon = icon("sync", lib = "font-awesome")
+                         ),
+                         br(),
+                         br()
+                       )
+                     )),
+                   column(5,
+                          h3("Results"),
+                          htmlOutput(outputId = "errorBarFold"),
+                          tags$style(type = "text/css", "#errorBarFold {white-space: pre-wrap; line-height:18px;}"),
+                          shinyjs::hidden(
+                            div(
+                              id = "advanced5",
+                              uiOutput("funFold"),
+                              reactable::reactableOutput("tableFold"),
+                              br(),
+                              fluidRow(
+                                column(8,
+                                       offset = 2,
+                                       div(actionButton(inputId = "clipFold",
+                                                        label = "Copy to Clipboard",
+                                                        style = "text-align:center",
+                                                        icon = icon("clipboard"),
+                                                        width = "100%"))
+                                )
+                              )
+                            )
+                          )
+                   )
+                 )
+               ),
+               #### Power Tab ####
+               tabPanel(
+                 title = HTML("Power"),
+                 titlePanel(div(HTML(
+                   "Power analysis and sample size determination"
+                 ))),
+                 hr(),
+                 fluidRow(
+                   column(
+                     7,
+                     shinyWidgets::awesomeRadio(inputId = "sampleSizeOrPower", label = HTML(paste("Calculate sample size or power:", infoTooltip("Choose whether you want to calculate the required sample size to achieve specified power, or statistical power given specified sample sizes."))), choices = c("Sample size" = 1, "Power" = 0), selected = 1, inline = T),
+                     conditionalPanel(
+                       condition = "input.sampleSizeOrPower == 1",
+                       textInput(inputId = "PowerValue", label = HTML(paste("Power:", infoTooltip("Please provide a decimal number bigger than 0 but smaller than 1."))), value = "0.8")
+                     ),
+                     fluidRow(
+                       column(
+                         6,
+                         h4(HTML("<b>Strain 1</b>")),
+                         PowerModuleUI("PowerStrain1", usePreset = 1),
+                       ),
+                       column(
+                         6,
+                         h4(HTML("<b>Strain 2</b>")),
+                         PowerModuleUI("PowerStrain2", usePreset = 2),
+                       )
+                     ),
+                     br(),
+                     fluidRow(
+                       column(
+                         4,
+                         shinyFeedback::loadingButton(
+                           "calculate6",
+                           label = HTML("<i class = \"fas fa-calculator\"></i> Calculate"),
+                           style = "width:100%;",
+                           loadingLabel = "Calculating\U2026"
+                         ),
+                         br(),
+                         br()
+                       ),
+                       column(
+                         4,
+                         actionButton("erase6",
+                                      label = "Clear all cells",
+                                      width = "100%",
+                                      icon = icon("trash", lib = "font-awesome")
+                         ),
+                         br(),
+                         br()
+                       ),
+                       column(
+                         4,
+                         actionButton("sample6",
+                                      label = "Load sample",
+                                      width = "100%",
+                                      icon = icon("sync", lib = "font-awesome")
+                         ),
+                         br(),
+                         br()
+                       )
+                     )
+                   ),
+                   column(5,
+                          h3("Results"),
+                          htmlOutput(outputId = "errorBarPower"),
+                          tags$style(type = "text/css", "#errorBarPower {white-space: pre-wrap; line-height:18px;}"),
+                          shinyjs::hidden(
+                            div(
+                              id = "advanced6",
+                              reactable::reactableOutput("tablePower"),
+                              hr(),
+                              htmlOutput("powerinfo"),
+                              br(),
+                              hr(),
+                              abbrevsUI("abbrevspval", TRUE)
+                            )
+                          ))
+                 )
                )
     )
   )

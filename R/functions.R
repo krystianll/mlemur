@@ -790,7 +790,6 @@ lrt.rate <- function(data1, data2, e1=1, e2=1, w1=1, w2=1, lag1=0, lag2=0, poiss
   
   seqs <- c(lapply(1:length(data1), function(x) aux.seq(e = e1, w = w1, death = death1, lag = lag1, phi = (inoculum1/Nt1)[x], n = data1[x]+1)),
             lapply(1:length(data2), function(x) aux.seq(e = e2, w = w2, death = death2, lag = lag2, phi = (inoculum2/Nt2)[x], n = data2[x]+1)))
-  if (any(is.na(seqs))) {if (verbose) message("m: failed to get the sequence"); if (confint==TRUE) {return(c(NA,NA,NA))} else {return(c(NA))}}
   seqs <- c(seqs[max], seqs[-max])
   
   poisson <- c(poisson_rate1*(Nt1-data1)*e1, poisson_rate2*(Nt2-data2)*e2)
@@ -827,6 +826,10 @@ lrt.rate <- function(data1, data2, e1=1, e2=1, w1=1, w2=1, lag1=0, lag2=0, poiss
 #' @param data a list of length 2 to 6 containing numeric vectors with colony counts.
 #' @param e a list or vector of length 2 to 6 (same as data) containing respective values of plating efficiency.
 #' @param w a list or vector of length 2 to 6 (same as data) containing respective values of relative mutant fitness.
+#' @param lag a list or vector of length 2 to 6 (same as data) containing respective values of phenotypic lag.
+#' @param poisson a list or vector of length 2 to 6 (same as data) containing respective values of the number of residual mutations.
+#' @param death a list or vector of length 2 to 6 (same as data) containing respective values of relative death rates.
+#' @param phi a list or vector of length 2 to 6 (same as data) containing respective values of inoculum sizes as a fraction of total culture sizes.
 #' @param cv a list or vector of length 2 to 6 (same as data) containing respective values of coefficient of variation.
 #' @param Nt a list or vector of length 2 to 6 (same as data) containing respective values of average number of cells in culture.
 #' @param fun describes the function of mutation rates for which confidence intervals should be calculated. Must be a character
@@ -834,8 +837,11 @@ lrt.rate <- function(data1, data2, e1=1, e2=1, w1=1, w2=1, lag1=0, lag2=0, poiss
 #' "double fold (X1/X2)/(X3/X4)", "background subtraction fold (X1-X2)/(X3-X2)") or a user-defined function containing
 #' phrases X1, X2, X3, X4, X5, X6, which denote mutation rates for Strain 1, Strain 2, ... . Only addition +, subtraction -,
 #' multiplication *, and division /, are currently supported.
-#' @return a vector of length 3 containg MLE of an arbitrary function of mutation rates as well as lower and upper
-#' profile likelihood confidence limits.
+#' @param ci.level confidence interval size, default 0.95.
+#' @param verbose if TRUE, mlemur will print messages to the console.
+#' @return a list containing two elements: "fun", a vector of length 3 containg MLE of an arbitrary
+#' function of mutation rates as well as lower and upper profile likelihood confidence limits;
+#' "rates", a vector containing MLEs of rates used to calculate the value of fun.
 #' @export
 #' @examples
 #' mle.fold(list(c(26, 9, 16, 34, 15, 25, 77, 13, 14, 19), c(67, 12, 112, 24,
@@ -848,77 +854,137 @@ lrt.rate <- function(data1, data2, e1=1, e2=1, w1=1, w2=1, lag1=0, lag2=0, poiss
 #' @references
 #' Zheng Q. New approaches to mutation rate fold change in Luria–Delbrück fluctuation experiments. Math Biosci.
 #' 2021;335: 108572. doi:10.1016/j.mbs.2021.108572
-mle.fold <- function(data, e=NULL, w=NULL, cv=NULL, Nt=NULL, fun="fold X1/X2") {
+mle.fold <- function(data, e=NULL, w=NULL, lag=NULL, poisson=NULL, death=NULL, phi=NULL, cv=NULL, Nt=NULL, fun="fold X1/X2", ci.level = 0.95, verbose=FALSE) {
   
   if (!is.list(data) | !length(data) > 1) stop("Colony counts must be a list of length 2 to 6.")
   
   # checking if fold function is correct
-  fun <- tryCatch(match.arg(fun, c("fold X1/X2", "subtraction X1-X2", "double fold (X1/X2)/(X3/X4)", "background subtraction fold (X1-X2)/(X3-X2)")), error = function(err) fun)
+  if (verbose) message("Checking function")
+  fun <- tryCatch(match.arg(fun, c("fold X1/X2", "substraction X1-X2", "double fold (X1/X2)/(X3/X4)", "background substraction fold (X1-X2)/(X3-X2)")), error = function(err) fun)
   if (fun == "fold X1/X2") {function.Y <- "X1/X2"}
-  else if (fun == "subtraction X1-X2") {function.Y <- "X1-X2"}
+  else if (fun == "substraction X1-X2") {function.Y <- "X1-X2"}
   else if (fun == "double fold (X1/X2)/(X3/X4)") {function.Y <- "(X1/X2)/(X3/X4)"}
-  else if (fun == "background subtraction fold (X1-X2)/(X3-X2)") {function.Y <- "(X1-X3)/(X2-X3)"}
+  else if (fun == "background substraction fold (X1-X2)/(X3-X2)") {function.Y <- "(X1-X3)/(X2-X3)"}
   else {function.Y <- fun}
   allowed.characters <- gsub("(X1|X2|X3|X4|X5|X6)(?=$|\\+|\\-|\\*|\\/|\\(|\\)| )", "", function.Y, perl = TRUE)
   allowed.characters <- gsub("\\(|\\)|\\+|\\-|\\/|\\*| ", "", allowed.characters)
   if (allowed.characters != "") stop("There are invalid characters in your fun argument.")
   if (Ryacas::yac_str(paste("Simplify(", function.Y, ")", sep = "")) %in% c("{}", "Undefined", "0")) stop("Invalid fun argument.")
+  if (verbose) message(paste("Checking used variables"))
   used.variables <- rep(0, 6)
   for (i in 1:6) {
     used.variables[i] <- ifelse(length(grep(paste("X", i, sep = ""), function.Y)) > 0, 1, 0)
   }
+  last.variable <- tail(which(used.variables==1), 1)
   param.num <- sum(used.variables)
+  
+  # checking if the lengths of provided datasets match fun
+  if (verbose) message(paste("Checking inputs"))
+  if (length(data) < last.variable) {stop(paste("List of colony counts (", length(data), ") is shorter than specified in fun (", last.variable, ").", sep = ""))}
+  if (length(data) > last.variable) {warning(paste("List of colony counts (", length(data), ") is longer than specified in fun (", last.variable, "). Only positions ", which(used.variables==1), " will be used.", sep = ""))}
+  for (i in 1:last.variable) {
+    if (length(data[[i]]) < 2) stop(paste("Less than two colony counts in dataset ", i, ".", sep = ""))
+  }
+  # print(last.variable)
+  
+  # suppressWarnings({
+    if (any(is.null(e)) || any(is.na(e))) {e <- rep(1, last.variable)}
+    e <- unlist(e)
+    if (length(e) < last.variable) {stop("The vector of plating efficiencies is shorter than specified in fun.")}
+    else if (length(e) > last.variable) {e <- e[1:last.variable]}
+    
+    if (any(is.null(cv)) || any(is.na(cv))) {cv <- rep(0, last.variable)}
+    cv <- unlist(cv)
+    if (length(cv) < last.variable) {stop("The vector of coefficients of variation is shorter than specified in fun.")}
+    else if (length(cv) > last.variable) {cv <- cv[1:last.variable]}
+    
+    if (any(is.null(w)) || any(is.na(w))) {w <- rep(1, last.variable)}
+    w <- unlist(w)
+    if (length(w) < last.variable) {stop("The vector of mutant relative growth rates is shorter than specified in fun.")}
+    else if (length(w) > last.variable) {w <- w[1:last.variable]}
+    
+    if (any(is.null(lag)) || any(is.na(lag))) {lag <- rep(0, last.variable)}
+    lag <- unlist(lag)
+    if (length(lag) < last.variable) {stop("The vector of values of phenotypic lag is shorter than specified in fun.")}
+    else if (length(lag) > last.variable) {lag <- lag[1:last.variable]}
+    
+    if (any(is.null(death)) || any(is.na(death))) {death <- rep(0, last.variable)}
+    death <- unlist(death)
+    if (length(death) < last.variable) {stop("The vector of relative death rates is shorter than specified in fun.")}
+    else if (length(death) > last.variable) {death <- death[1:last.variable]}
+    
+    if (any(is.null(poisson)) || any(is.na(poisson))) {poisson <- rep(0, last.variable)}
+    poisson <- unlist(poisson)
+    if (length(poisson) < last.variable) {stop("The vector of the sizes of residual mutationis shorter than specified in fun.")}
+    else if (length(poisson) > last.variable) {poisson <- poisson[1:last.variable]}
+    
+    if (any(is.null(phi)) || any(is.na(phi))) {phi <- rep(0, last.variable)}
+    phi <- unlist(phi)
+    if (length(phi) < last.variable) {stop("The vector of relative inoculum sizes  is shorter than specified in fun.")}
+    else if (length(phi) > last.variable) {phi <- phi[1:last.variable]}
+    
+    if (any(is.null(Nt)) || any(is.na(Nt))) {Nt <- rep(1, last.variable)}
+    Nt <- unlist(Nt)
+    if (length(Nt) < last.variable) {stop("The vector of average numbers of cells in cultures is shorter than specified in fun.")}
+    else if (length(Nt) > last.variable) {Nt <- Nt[1:last.variable]}
+    Nt <- Nt*(1-phi)
+  # })
+  
+  # Checking if matrix can be downsized
   checked.variables <- 0
   for (i in 1:6) {
-    if (checked.variables >= param.num) {break}
+    if (checked.variables > param.num) {break}
     if (used.variables[i] == 1) {checked.variables <- checked.variables + 1}
     else {
       variable.to.drop <- which(used.variables == 1)[checked.variables + 1]
       function.Y <- gsub(paste("X", variable.to.drop, sep = ""), paste("X", i, sep = ""), function.Y)
+      data[i] <- data[variable.to.drop]
+      Nt[i] <- Nt[variable.to.drop]
+      e[i] <- e[variable.to.drop]
+      w[i] <- w[variable.to.drop]
+      lag[i] <- lag[variable.to.drop]
+      death[i] <- death[variable.to.drop]
+      phi[i] <- phi[variable.to.drop]
+      poisson[i] <- poisson[variable.to.drop]
+      cv[i] <- cv[variable.to.drop]
       used.variables[i] <- 1
       used.variables[variable.to.drop] <- 0
       checked.variables <- checked.variables + 1
     }
   }
   
-  # checking if the lengths of provided datasets match fun
-  if (length(data) < param.num) {stop(paste("List of colony counts (", length(data), ") is shorter than the number of variables in fun (", sum(used.variables), ").", sep = ""))}
-  if (length(data) > param.num) {warning(paste("List of colony counts (", length(data), ") is longer than the number of variables in fun (", sum(used.variables), "). Only first ", sum(used.variables), " positions will be used.", sep = "")); data <- data[1:sum(used.variables)]}
-  for (i in 1:param.num) {
-    if (length(data[[i]]) < 2) stop(paste("Less than two colony counts in dataset ", i, ".", sep = ""))
-  }
-  if (is.null(e)) {e <- rep(1, param.num)}
-  e <- unlist(e)
-  if (length(e) < param.num) {stop("The vector of plating efficiencies is shorter than colony counts list.")}
-  else if (length(e) > param.num) {e <- e[1:param.num]}
-  if (is.null(cv)) {cv <- rep(0, param.num)}
-  cv <- unlist(cv)
-  if (length(cv) < param.num) {stop("The vector of coefficients of variation is shorter than colony counts list.")}
-  else if (length(cv) > param.num) {cv <- cv[1:param.num]}
-  if (is.null(w)) {w <- rep(1, param.num)}
-  w <- unlist(w)
-  if (length(w) < param.num) {stop("The vector of mutant relative growth rates is shorter than colony counts list.")}
-  else if (length(w) > param.num) {w <- w[1:param.num]}
-  if (is.null(Nt)) {Nt <- rep(1, param.num)}
-  Nt <- unlist(Nt)
-  if (length(Nt) < param.num) {stop("The vector of average numbers of cells in cultures is shorter than colony counts list.")}
-  else if (length(Nt) > param.num) {Nt <- Nt[1:param.num]}
+  data <- data[1:param.num]
+  Nt <- Nt[1:param.num]
+  e <- e[1:param.num]
+  w <- w[1:param.num]
+  lag <- lag[1:param.num]
+  death <- death[1:param.num]
+  phi <- phi[1:param.num]
+  poisson <- poisson[1:param.num]
+  cv <- cv[1:param.num]
   
   param.names <- c("Y", "M2", "M3", "M4", "M5", "M6")
   culture.names <- c("N1", "N2", "N3", "N4", "N5", "N6")
   
   # substituting parameters in fold function Y=f(M1,M2,...,N1,N2,...)
   function.Y <- gsub("X1", "(M1/N1)", gsub("X2", "(M2/N2)", gsub("X3", "(M3/N3)", gsub("X4", "(M4/N4)", gsub("X5", "(M5/N5)", gsub("X6", "(M6/N6)", function.Y))))))
+  if (verbose) message(paste("Objective function is Y =", function.Y))
   
   # finding mles
-  M.hat <- mapply(function(v,x,y,z) {mle.mutations(data = x, e = y, w = z, cv = v, confint = FALSE)}, x = data, y = e, z = w, v = cv)
+  M.hat <- mapply(function(data,e,w,lag,death,poisson,phi,cv) {mle.mutations(data = data, e = e, w = w, lag = lag, death = death, poisson = poisson, phi = phi, cv = cv, confint = FALSE)}, data = data, e = e, w = w, lag = lag, death = death, poisson = poisson, phi = phi, cv = cv)
+  if (verbose) message("")
+  if (verbose) message(paste("Found MLEs of m:", paste(M.hat, collapse = ", ")))
   Y.hat <- eval(parse(text = gsub("(N)([1-6])", "Nt\\[\\2\\]", gsub("(M)([1-6])", "M.hat\\[\\2\\]", function.Y))))
+  if (verbose) message(paste("Found MLE of Y:", Y.hat))
   
   # expressing M1 as a function of fold M1=f(Y,M2,...,N1,N2,...)
   function.M1 <- gsub(x = gsub(x = Ryacas::yac_str(paste("Solve(", paste("Y==", function.Y, sep = ""), ", M1)")), pattern = "M1==", replacement = ""), pattern = '^.|.$', replacement = '')
+  if (verbose) message("")
+  if (verbose) message(paste("Reparametrized function is M1 =", function.M1))
   
   # creating function that calculates first derivatives of M1=f(Y,M2,...,N1,N2,...)
   deriv <- mapply(function(A) {Ryacas::yac_str(paste("D(", A, ") (", function.M1, ")", sep=""))}, A = param.names[1:param.num])
+  if (verbose) message(paste("Expressions for first derivatives dM1/dY, dM1/dM2, ...:", paste(deriv, collapse = ", ")))
   deriv.parsed <- parse(text = gsub("Y", "M[1]", gsub("(N)([1-6])", "N\\[\\2\\]", gsub("(M)([2-6])", "M\\[\\2\\]", deriv))))
   calc.deriv <- function(M,N) {
     res <- vector(length = length(M))
@@ -933,6 +999,7 @@ mle.fold <- function(data, e=NULL, w=NULL, cv=NULL, Nt=NULL, fun="fold X1/X2") {
   for (i in 1:param.num) {
     deriv2[i,] <- mapply(function(A) {Ryacas::yac_str(paste("D(", A, ") (", deriv[i], ")", sep=""))}, A = param.names[1:param.num])
   }
+  if (verbose) message(paste("Expressions for second derivatives d2M1/dY2, d2M1/dM2dY, ...:", paste(deriv2, collapse = ", ")))
   deriv2.parsed <- parse(text = gsub("Y", "M[1]", gsub("(N)([1-6])", "N\\[\\2\\]", gsub("(M)([2-6])", "M\\[\\2\\]", deriv2))))
   calc.deriv2 <- function(M,N) {
     res <- matrix(NA, nrow = length(M), ncol = length(M))
@@ -949,9 +1016,9 @@ mle.fold <- function(data, e=NULL, w=NULL, cv=NULL, Nt=NULL, fun="fold X1/X2") {
   # calculating pmfs and their derivatives under MLEs
   n <- sapply(data, max) + 1
   
-  seq <- mapply(function(e, w, n) aux.seq(e = e, w = w, n = n - 1), e, w, n, SIMPLIFY = FALSE)
+  seq <- mapply(function(e, w, lag, death, phi, n) aux.seq(e = e, w = w, death = death, lag = lag, phi = phi, n = n - 1), e = e, w = w, lag = lag, death = death, ph = phi, n = n, SIMPLIFY = FALSE)
   
-  probs.hat <- mapply(function(m, cv, seq, n) calc_probs(m, cv, seq, n), m = M.hat, cv = cv, seq = seq, n = n, SIMPLIFY = FALSE)
+  probs.hat <- mapply(function(m, cv, poisson, seq, n) calc_probs(m = m, cv = cv, seq = seq, len = n, poisson = poisson), m = M.hat, cv = cv, seq = seq, n = n, poisson = poisson, SIMPLIFY = FALSE)
   
   probs1.ratio <- lapply(1:param.num, function(i) {probs.hat[[i]]$prob1[data[[i]]+1]/probs.hat[[i]]$prob[data[[i]]+1]})
   probs2.ratio <- lapply(1:param.num, function(i) {probs.hat[[i]]$prob2[data[[i]]+1]/probs.hat[[i]]$prob[data[[i]]+1]})
@@ -975,9 +1042,15 @@ mle.fold <- function(data, e=NULL, w=NULL, cv=NULL, Nt=NULL, fun="fold X1/X2") {
   }
   
   loglikelihood.hat <- sum(unlist(lapply(1:param.num, function(i) {sum(log(probs.hat[[i]]$prob[data[[i]] + 1]))})))
+  if (verbose) message("")
+  if (verbose) message(paste("Y: calculating log-likelihood and derivatives at MLE:"))
+  if (verbose) message(paste("l = ", loglikelihood.hat, "; U = ", paste(U.hat, collapse = ", "), "; J = ", paste(J.hat, collapse = ", "), sep = ""))
   
+  if (verbose) message("")
+  if (verbose) message("")
+  if (verbose) message(paste("Y: Constructing confidence intervals at the level of significance \U03B1=", (ci.level)*100, "%", sep = ""))
   # calculating delta
-  chi <- qchisq(0.95, 1)
+  chi <- qchisq(ci.level, 1)
   l.alpha <- loglikelihood.hat - 0.5*chi
   
   h <- sqrt(chi / (J.hat[1, 1] - crossprod(J.hat[1, -1], solve(J.hat[-1, -1]) %*% J.hat[-1, 1])))
@@ -986,17 +1059,21 @@ mle.fold <- function(data, e=NULL, w=NULL, cv=NULL, Nt=NULL, fun="fold X1/X2") {
   # lower limit
   Y.low <- NA
   lower.1 <- rep(-1, param.num)
-  grid <- as.matrix(expand.grid(rep(list(seq(0.1, 1.5, length.out=31)), param.num)))
+  grid <- rbind(rep(1, param.num), as.matrix(expand.grid(rep(list(seq(0.1, 1.5, length.out=31)), param.num))))
   for (i in 1:nrow(grid)) {
     if (all(lower.1[-1] > 0)) break
     
     lower.0 <- c(Y.hat, M.hat[-1]) - as.vector(grid[i,]) * as.vector(delta)
+    if (verbose) message("")
+    if (verbose) message(paste("Y_low: Starting over with initial values", paste(lower.0, collapse = ", ")))
     
     iter <- 0
     repeat {
       iter <- iter + 1
+      if (verbose) message(paste("Y_low: iteration", iter))
+      if (verbose) message(paste("Current iteration:", paste(lower.0, collapse = ", ")))
       if (iter > 30) {lower.1 <- rep(-1, param.num); break}
-      probs.low <- mapply(function(m, cv, seq, n) calc_probs(m, cv, seq, n), m = c(calc.M1(lower.0,Nt),lower.0[-1]), cv = cv, seq = seq, n = n, SIMPLIFY = FALSE)
+      probs.low <- mapply(function(m, cv, seq, n, poisson) calc_probs(m = m, cv = cv, seq = seq, len = n, poisson = poisson), m = c(calc.M1(lower.0,Nt),lower.0[-1]), cv = cv, seq = seq, n = n, poisson = poisson, SIMPLIFY = FALSE)
       if (!all(is.finite(unlist(unlist(probs.low))))) {lower.1 <- rep(-1, param.num); break}
       probs1.ratio.low <- lapply(1:param.num, function(i) {probs.low[[i]]$prob1[data[[i]]+1]/probs.low[[i]]$prob[data[[i]]+1]})
       probs2.ratio.low <- lapply(1:param.num, function(i) {probs.low[[i]]$prob2[data[[i]]+1]/probs.low[[i]]$prob[data[[i]]+1]})
@@ -1018,11 +1095,11 @@ mle.fold <- function(data, e=NULL, w=NULL, cv=NULL, Nt=NULL, fun="fold X1/X2") {
       for (i in 2:param.num) {
         J.low[i,i] <- J.low[i,i] + sum(probs1.ratio.low[[i]]^2) - sum(probs2.ratio.low[[i]])
       }
+      loglikelihood.low <- sum(unlist(lapply(1:param.num, function(i) {sum(suppressWarnings(log(probs.low[[i]]$prob[data[[i]] + 1])))})))
+      if (verbose) message(paste("l = ", loglikelihood.low-l.alpha, "; U = ", paste(U.low, collapse = ", "), "; J = ", paste(J.low, collapse = ", "), sep = ""))
       
       if (!all(is.finite(U.low))) {lower.1 <- rep(-1, param.num); break}
       if (!all(is.finite(J.low))) {lower.1 <- rep(-1, param.num); break}
-      
-      loglikelihood.low <- sum(unlist(lapply(1:param.num, function(i) {sum(suppressWarnings(log(probs.low[[i]]$prob[data[[i]] + 1])))})))
       if (!all(is.finite(loglikelihood.low))) {lower.1 <- rep(-1, param.num); break}
       
       J.low[1,] <- -U.low
@@ -1033,28 +1110,40 @@ mle.fold <- function(data, e=NULL, w=NULL, cv=NULL, Nt=NULL, fun="fold X1/X2") {
       lower.1 <- lower.0 + delta.low
       
       if (!all(is.finite(lower.1))) {lower.1 <- rep(-1, param.num); break}
-      else if (any(lower.1[-1] < 0)) {lower.1 <- rep(-1, param.num); break}
       else if (lower.1[1]>=Y.hat) {lower.1 <- rep(-1, param.num); break}
+      whileiter <- 0
+      while(any(c(calc.M1(lower.1,Nt),lower.1[-1]) < 0)) {
+        whileiter <- whileiter + 1
+        if (whileiter > 10) {lower.1 <- rep(-1, param.num); break}
+        delta.low <- delta.low * 0.5
+        lower.1 <- lower.0 + delta.low
+      }
+      if (any(c(calc.M1(lower.1,Nt),lower.1[-1]) < 0)) {lower.1 <- rep(-1, param.num); break}
       if (sqrt(sum((delta.low)^2 / sum(lower.0^2))) < 1e-6) {Y.low <- lower.1[1]; break}
       else {lower.0 <- lower.1}
       
     }
   }
+  if (verbose) {message(paste("Y_low: found MLE", Y.low))}
   
   # upper limit
   Y.up <- NA
   upper.1 <- rep(-1, param.num)
-  grid <- as.matrix(expand.grid(rep(list(seq(0.2, 4, length.out=21)), param.num)))
+  grid <- rbind(rep(1, param.num), as.matrix(expand.grid(rep(list(seq(0.2, 4, length.out=21)), param.num))))
   for (i in 1:nrow(grid)) {
     if (all(upper.1[-1] > 0)) break
     
     upper.0 <- c(Y.hat, M.hat[-1]) + as.vector(grid[i,]) * as.vector(delta)
+    if (verbose) message("")
+    if (verbose) message(paste("Y_up: Starting over with initial values", paste(upper.0, collapse = ", ")))
     
     iter <- 0
     repeat {
       iter <- iter + 1
+      if (verbose) message(paste("Y_up: iteration", iter))
+      if (verbose) message(paste("Current iteration:", paste(upper.0, collapse = ", ")))
       if (iter > 30) {upper.1 <- rep(-1, param.num); break}
-      probs.up <- mapply(function(m, cv, seq, n) calc_probs(m, cv, seq, n), m = c(calc.M1(upper.0,Nt),upper.0[-1]), cv = cv, seq = seq, n = n, SIMPLIFY = FALSE)
+      probs.up <- mapply(function(m, cv, seq, n, poisson) calc_probs(m = m, cv = cv, seq = seq, len = n, poisson = poisson), m = c(calc.M1(upper.0,Nt),upper.0[-1]), cv = cv, seq = seq, n = n, poisson = poisson, SIMPLIFY = FALSE)
       if (!all(is.finite(unlist(unlist(probs.up))))) {upper.1 <- rep(-1, param.num); break}
       probs1.ratio.up <- lapply(1:param.num, function(i) {probs.up[[i]]$prob1[data[[i]]+1]/probs.up[[i]]$prob[data[[i]]+1]})
       probs2.ratio.up <- lapply(1:param.num, function(i) {probs.up[[i]]$prob2[data[[i]]+1]/probs.up[[i]]$prob[data[[i]]+1]})
@@ -1075,11 +1164,11 @@ mle.fold <- function(data, e=NULL, w=NULL, cv=NULL, Nt=NULL, fun="fold X1/X2") {
       for (i in 2:param.num) {
         J.up[i,i] <- J.up[i,i] + sum(probs1.ratio.up[[i]]^2) - sum(probs2.ratio.up[[i]])
       }
+      loglikelihood.up <- sum(unlist(lapply(1:param.num, function(i) {sum(suppressWarnings(log(probs.up[[i]]$prob[data[[i]] + 1])))})))
+      if (verbose) message(paste("l = ", loglikelihood.up-l.alpha, "; U = ", paste(U.up, collapse = ", "), "; J = ", paste(J.up, collapse = ", "), sep = ""))
       
       if (!all(is.finite(U.up))) {upper.1 <- rep(-1, param.num); break}
       if (!all(is.finite(J.up))) {upper.1 <- rep(-1, param.num); break}
-      
-      loglikelihood.up <- sum(unlist(lapply(1:param.num, function(i) {sum(suppressWarnings(log(probs.up[[i]]$prob[data[[i]] + 1])))})))
       if (!all(is.finite(loglikelihood.up))) {upper.1 <- rep(-1, param.num); break}
       
       J.up[1,] <- -U.up
@@ -1090,15 +1179,23 @@ mle.fold <- function(data, e=NULL, w=NULL, cv=NULL, Nt=NULL, fun="fold X1/X2") {
       upper.1 <- upper.0 + delta.up
       
       if (!all(is.finite(upper.1))) {upper.1 <- rep(-1, param.num); break}
-      else if (any(upper.1[-1] < 0)) {upper.1 <- rep(-1, param.num); break}
       else if (upper.1[1]<=Y.hat) {upper.1 <- rep(-1, param.num); break}
+      whileiter <- 0
+      while(any(c(calc.M1(upper.1,Nt),upper.1[-1]) < 0)) {
+        whileiter <- whileiter + 1
+        if (whileiter > 10) {upper.1 <- rep(-1, param.num); break}
+        delta.up <- delta.up * 0.5
+        upper.1 <- upper.0 + delta.up
+      }
+      if (any(c(calc.M1(upper.1,Nt),upper.1[-1]) < 0)) {upper.1 <- rep(-1, param.num); break}
       if (sqrt(sum((delta.up)^2 / sum(upper.0^2))) < 1e-6) {Y.up <- upper.1[1]; break}
       else {upper.0 <- upper.1}
       
     }
   }
+  if (verbose) {message(paste("Y_up: found MLE", Y.up))}
   
-  return(c(Y.hat, Y.low, Y.up))
+  return(list("fun" = c(Y.hat, Y.low, Y.up), "rates" = M.hat/Nt))
   
 }
 
@@ -1177,6 +1274,9 @@ power.est <- function(n1 = 30, n2 = NULL, rate1 = 1e-9, rate2 = 2e-9, Nt1 = 1e9,
   seq1 <- aux.seq(e = e1, w = w1, death = death1, lag = lag1, phi = phi1, n = N1-1)
   seq2 <- aux.seq(e = e2, w = w2, death = death2, lag = lag2, phi = phi2, n = N2-1)
   
+  Nt1 <- Nt1*(1-phi1)
+  Nt2 <- Nt2*(1-phi2)
+  
   # combined mutation rate
   if (verbose) message("Finding combined mutation rate")
   if (Nt1>Nt2) {
@@ -1187,7 +1287,7 @@ power.est <- function(n1 = 30, n2 = NULL, rate1 = 1e-9, rate2 = 2e-9, Nt1 = 1e9,
   } else {
     m.est <- optim_m_from_probs(current_m = (rate2*Nt2+rate1*Nt1)/2, lower_m = min(rate1*Nt1,rate2*Nt2)/2, upper_m = max(rate1*Nt1,rate2*Nt2)*2, R = Nt1/Nt2, k1 = 0,
                                 k2 = 0, poisson1 = 0, poisson2 = 0, seq1 = seq2, seq2 = seq1, prob1 = prob2, prob2 = prob1, verbose = verbose)[1]
-    probc1 <- prob_mutations(m = Nt2/Nt1*m.est, n = N1, e = e1, w = w1, cv = cv1, death = death1, lag = lag1, phi = phi1, poisson = poisson1)
+    probc1 <- prob_mutations(m = Nt1/Nt2*m.est, n = N1, e = e1, w = w1, cv = cv1, death = death1, lag = lag1, phi = phi1, poisson = poisson1)
     probc2 <- prob_mutations(m = m.est, n = N2, e = e2, w = w2, cv = cv2, death = death2, lag = lag2, phi = phi2, poisson = poisson2)
   }
   if (verbose) message(paste("Found combined m", m.est))
@@ -1274,6 +1374,9 @@ sample.size <- function(power=0.8, rate1 = 1e-9, rate2 = 2e-9, Nt1 = 1e9, Nt2 = 
   seq1 <- aux.seq(e = e1, w = w1, death = death1, lag = lag1, phi = phi1, n = N1-1)
   seq2 <- aux.seq(e = e2, w = w2, death = death2, lag = lag2, phi = phi2, n = N2-1)
   
+  Nt1 <- Nt1*(1-phi1)
+  Nt2 <- Nt2*(1-phi2)
+  
   # combined mutation rate
   if (verbose) message("Finding combined mutation rate")
   if (Nt1>Nt2) {
@@ -1284,7 +1387,7 @@ sample.size <- function(power=0.8, rate1 = 1e-9, rate2 = 2e-9, Nt1 = 1e9, Nt2 = 
   } else {
     m.est <- optim_m_from_probs(current_m = (rate2*Nt2+rate1*Nt1)/2, lower_m = min(rate1*Nt1,rate2*Nt2)/2, upper_m = max(rate1*Nt1,rate2*Nt2)*2, R = Nt1/Nt2, k1 = 0,
                                 k2 = 0, poisson1 = 0, poisson2 = 0, seq1 = seq2, seq2 = seq1, prob1 = prob2, prob2 = prob1, verbose = verbose)[1]
-    probc1 <- prob_mutations(m = Nt2/Nt1*m.est, n = N1, e = e1, w = w1, cv = cv1, death = death1, lag = lag1, phi = phi1, poisson = poisson1)
+    probc1 <- prob_mutations(m = Nt1/Nt2*m.est, n = N1, e = e1, w = w1, cv = cv1, death = death1, lag = lag1, phi = phi1, poisson = poisson1)
     probc2 <- prob_mutations(m = m.est, n = N2, e = e2, w = w2, cv = cv2, death = death2, lag = lag2, phi = phi2, poisson = poisson2)
   }
   if (verbose) message(paste("Found combined m", m.est))
@@ -1336,7 +1439,7 @@ calc.rate.int <- function(data) {
   if (is.na(data$Inoculum)) {data$Inoculum <- 0}
   
   est <- tryCatch(mle.mutations(data = data$CountsSelective, e = eff, w = data$Fitness, lag = data$Lag, poisson = data$Residual,
-                                death = data$Death/(1 + data$Death), phi = data$Inoculum/Nt, cv = cv0, confint = T, ci.level = 0.95, verbose = F),
+                                death = data$Death/(1 + data$Death), phi = data$Inoculum/Nt, cv = cv0, confint = TRUE, ci.level = 0.95, verbose = F),
                   error = function(err) {c(NA,NA,NA)})
   
   m <- est[1]
@@ -1362,6 +1465,50 @@ calc.rate.int <- function(data) {
     signif(mu_low, 6),
     signif(mu_up, 6),
     m
+  )
+  return(outputData)
+}
+
+# Mutation Rate Calculator - per plate version
+calc.rate.per.plate.int <- function(data) {
+  if (is.na(data$PlatingEfficiency)) {
+    eff <- data$VolumeSelective/data$DilutionSelective/data$VolumeTotal
+  } else {
+    eff <- data$PlatingEfficiency
+  }
+  
+  Nt <- data$CountsNonselective * data$DilutionNonselective / data$VolumeNonselective * data$VolumeTotal
+  
+  if (is.na(data$Fitness)) {data$Fitness <- 1}
+  if (is.na(data$Lag)) {data$Lag <- 0}
+  if (is.na(data$Residual)) {data$Residual <- 0}
+  if (is.na(data$Death)) {data$Death <- 0}
+  if (is.na(data$Inoculum)) {data$Inoculum <- 0}
+  
+  est <- tryCatch(mle.rate(data = data$CountsSelective, e = eff, w = data$Fitness, lag = data$Lag, poisson_rate = data$Residual,
+                           death = data$Death/(1 + data$Death), inoculum = data$Inoculum, Nt = Nt, confint = TRUE, ci.level = 0.95, verbose = F),
+                  error = function(err) {c(NA,NA,NA)})
+  
+  mu <- est[1]
+  mu_low <- est[2]
+  mu_up <- est[3]
+  
+  outputData <- c(
+    signif(eff, 6),
+    formatC(mean(Nt), format = "e", digits = 3),
+    "-",
+    ifelse(data$Fitness != 1, signif(data$Fitness, 4), 1),
+    ifelse(data$Lag != 0, signif(data$Lag, 4), 0),
+    ifelse(data$Death != 0, signif(data$Death, 4), 0),
+    ifelse(data$Residual != 0, signif(data$Residual, 4), 0),
+    ifelse(data$Inoculum != 0, signif(data$Inoculum/Nt, 4), 0),
+    "-",
+    "-",
+    "-",
+    signif(mu, 6),
+    signif(mu_low, 6),
+    signif(mu_up, 6),
+    mu
   )
   return(outputData)
 }
@@ -1425,9 +1572,104 @@ calc.pval.int <- function(datax, datay, Mx, My) {
   result <- tryCatch(lrt.mutations(datax = datax$CountsSelective, datay = datay$CountsSelective, ex = ex, ey = ey, 
                                    wx = datax$Fitness, wy = datay$Fitness,
                                    lagx = datax$Lag, lagy = datay$Lag, poissonx = datax$Residual, poissony = datay$Residual,
-                                   deathx = datax$Death/(1 + datax$Death), deathy = datay$Death/(1 + datay$Death), phix = datax$Inoculum/Ntx, phiy = datay$Inoculum/Nty,
+                                   deathx = datax$Death/(1+datax$Death), deathy = datay$Death/(1+datay$Death), phix = datax$Inoculum/Ntx, phiy = datay$Inoculum/Nty,
                                    cvx = cv0x, cvy = cv0y, Nx = Ntx, Ny = Nty, Mx = Mx, My = My, verbose = F),
                      error=function(err) {c(NA)})
   
   return(result)
+}
+
+# Calculator of pvalue - per plate version
+calc.pval.per.plate.int <- function(data1, data2) {
+  if (is.na(data1$PlatingEfficiency)) {
+    e1 <- data1$VolumeSelective/data1$DilutionSelective/data1$VolumeTotal
+  } else {
+    e1 <- data1$PlatingEfficiency
+  }
+  Nt1 <- data1$CountsNonselective * data1$DilutionNonselective / data1$VolumeNonselective * data1$VolumeTotal
+  if (is.na(data1$Fitness)) {data1$Fitness <- 1}
+  if (is.na(data1$Lag)) {data1$Lag <- 0}
+  if (is.na(data1$Residual)) {data1$Residual <- 0}
+  if (is.na(data1$Death)) {data1$Death <- 0}
+  if (is.na(data1$Inoculum)) {data1$Inoculum <- 0}
+  
+  if (is.na(data2$PlatingEfficiency)) {
+    e2 <- data2$VolumeSelective/data2$DilutionSelective/data2$VolumeTotal
+  } else {
+    e2 <- data2$PlatingEfficiency
+  }
+  Nt2 <- data2$CountsNonselective * data2$DilutionNonselective / data2$VolumeNonselective * data2$VolumeTotal
+  if (is.na(data2$Fitness)) {data2$Fitness <- 1}
+  if (is.na(data2$Lag)) {data2$Lag <- 0}
+  if (is.na(data2$Residual)) {data2$Residual <- 0}
+  if (is.na(data2$Death)) {data2$Death <- 0}
+  if (is.na(data2$Inoculum)) {data2$Inoculum <- 0}
+  
+  result <- tryCatch(lrt.rate(data1 = data1$CountsSelective, data2 = data2$CountsSelective, e1 = e1, e2 = e2, 
+                              w1 = data1$Fitness, w2 = data2$Fitness, lag1 = data1$Lag, lag2 = data2$Lag,
+                              poisson_rate1 = data1$Residual, poisson_rate2 = data2$Residual,
+                              death1 = data1$Death/(1+data1$Death), death2 = data2$Death/(1+data2$Death),
+                              inoculum1 = data1$Inoculum, inoculum2 = data2$Inoculum,
+                              Nt1 = Nt1, Nt2 = Nt2, verbose = F),
+                     error=function(err) {c(NA)})
+  
+  return(result)
+}
+
+# Fold Calculator
+calc.fold.int <- function(data1, data2, data3, data4, data5, data6, fun) {
+  datasets <- list(data1, data2, data3, data4, data5, data6)
+  
+  for (i in 1:6) {
+    if (is.na(datasets[[i]]$PlatingEfficiency)) {
+      datasets[[i]]$PlatingEfficiency <- datasets[[i]]$VolumeSelective/datasets[[i]]$DilutionSelective/datasets[[i]]$VolumeTotal
+    } else {
+      datasets[[i]]$PlatingEfficiency <- datasets[[i]]$PlatingEfficiency
+    }
+    
+    if(is.na(datasets[[i]]$MeanCells)) {
+      datasets[[i]]$MeanCells <- mean(datasets[[i]]$CountsNonselective) * datasets[[i]]$DilutionNonselective / datasets[[i]]$VolumeNonselective * datasets[[i]]$VolumeTotal
+    } else {
+      datasets[[i]]$MeanCells <- datasets[[i]]$MeanCells
+    }
+    
+    if (datasets[[i]]$model && as.numeric(datasets[[i]]$setCV) == 1) {
+      datasets[[i]]$CV <- datasets[[i]]$CV
+    } else if (datasets[[i]]$model && as.numeric(datasets[[i]]$setCV) == 0) {
+      datasets[[i]]$CV <- sd(datasets[[i]]$CountsNonselective) * datasets[[i]]$DilutionNonselective / datasets[[i]]$VolumeNonselective * datasets[[i]]$VolumeTotal / datasets[[i]]$MeanCells
+    } else {
+      datasets[[i]]$CV <- 0
+    }
+    
+    if (is.na(datasets[[i]]$CV)) {datasets[[i]]$CV <- 0}
+    else if (datasets[[i]]$CV<1e-5) {datasets[[i]]$CV <- 0}
+    else if (datasets[[i]]$CV>10.0) {datasets[[i]]$CV <- 10.0}
+    else {datasets[[i]]$CV <- datasets[[i]]$CV}
+    
+    if (is.na(datasets[[i]]$Fitness)) {datasets[[i]]$Fitness <- 1}
+    if (is.na(datasets[[i]]$Lag)) {datasets[[i]]$Lag <- 0}
+    if (is.na(datasets[[i]]$Residual)) {datasets[[i]]$Residual <- 0}
+    if (is.na(datasets[[i]]$Death)) {datasets[[i]]$Death <- 0} else {datasets[[i]]$Death <- datasets[[i]]$Death/(1+datasets[[i]]$Death)}
+    if (is.na(datasets[[i]]$Inoculum)) {datasets[[i]]$Inoculum <- 0}
+  }
+  
+  data <- lapply(datasets, function(x) x$CountsSelective)
+  Nt <- lapply(datasets, function(x) x$MeanCells)
+  e <- lapply(datasets, function(x) x$PlatingEfficiency)
+  w <- lapply(datasets, function(x) x$Fitness)
+  lag <- lapply(datasets, function(x) x$Lag)
+  death <- lapply(datasets, function(x) x$Death)
+  cv <- lapply(datasets, function(x) x$CV)
+  poisson <- lapply(datasets, function(x) x$Residual)
+  phi <- lapply(datasets, function(x) {x$Inoculum/x$MeanCells})
+  
+  est <- tryCatch(suppressWarnings(mle.fold(data = data, e = e, w = w, lag = lag, poisson = poisson, death = death, phi = phi, cv = cv, Nt = Nt, fun = fun)),
+                  error = function(err) NA)
+  
+  if (!(length(est) == 1)) {
+    outputData <- lapply(est, function (x) {signif(x, 6)}) 
+  } else {
+    outputData <- NA
+  }
+  return(outputData)
 }

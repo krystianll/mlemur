@@ -11,6 +11,22 @@ numerise <- function(x) {
   return(y)
 }
 
+# Input updater
+loadDatasetWrapper <- function(id, rv) {
+  callModule(countsPlatingLoadDataset,
+             id = id,
+             CountsRateUserInput = reactive(rv$CountsRateUserInput()),
+             CountsStrain1UserInput = reactive(rv$CountsStrain1UserInput()),
+             CountsStrain2UserInput = reactive(rv$CountsStrain2UserInput()),
+             CountsStrain1FoldUserInput = reactive(rv$CountsStrain1FoldUserInput()),
+             CountsStrain2FoldUserInput = reactive(rv$CountsStrain2FoldUserInput()),
+             CountsStrain3FoldUserInput = reactive(rv$CountsStrain3FoldUserInput()),
+             CountsStrain4FoldUserInput = reactive(rv$CountsStrain4FoldUserInput()),
+             CountsStrain5FoldUserInput = reactive(rv$CountsStrain5FoldUserInput()),
+             CountsStrain6FoldUserInput = reactive(rv$CountsStrain6FoldUserInput())
+  )
+}
+
 # Warning Tooltip
 warningTooltip <- function(text) {
   text <- paste(text)
@@ -34,6 +50,7 @@ softWarningTooltip <- function(text) {
 
 # Shiny Feedback customisation
 textInputError <- function(inputId, text) {
+  shinyFeedback::hideFeedback(inputId = inputId)
   shinyFeedback::showFeedback(inputId = inputId,
                               text = text,
                               color = "#b94a48",
@@ -71,6 +88,21 @@ NonNegValueValidator <- function(x) {
   return(info)
 }
 
+# Validator of Single Value positive inputs (Sample size)
+PosValueValidator <- function(x) {
+  info <- paste("")
+  if (length(x) == 0) {
+    info <- paste("Please provide a positive value.\n")
+  }
+  else if (is.na(x) == TRUE) {
+    info <- paste("Non-numeric characters (letters, commas, colons, etc.) are not allowed.\n")
+  }
+  else if (x <= 0) {
+    info <- paste("A positive number is required.\n")
+  }
+  return(info)
+}
+
 # Validator of Death parameter
 DeathValidator <- function(x) {
   info <- paste("")
@@ -82,6 +114,24 @@ DeathValidator <- function(x) {
   }
   else if (x < 0) {
     info <- paste("A non-negative number is required.\n")
+  }
+  else if (x >= 1) {
+    info <- paste("The value must be smaller than unity.\n")
+  }
+  return(info)
+}
+
+# Validator of Power parameter
+PowerValidator <- function(x) {
+  info <- paste("")
+  if (length(x) == 0) {
+    info <- paste("Please provide a positive value.\n")
+  }
+  else if (is.na(x) == TRUE) {
+    info <- paste("Non-numeric characters (letters, commas, colons, etc.) are not allowed.\n")
+  }
+  else if (x <= 0) {
+    info <- paste("A positive number is required.\n")
   }
   else if (x >= 1) {
     info <- paste("The value must be smaller than unity.\n")
@@ -158,6 +208,33 @@ NonselectiveValidator <- function(x) {
     if (sum(x) <= 0) {
       info3 <-
         paste("At least one colony count must be bigger than 0.\n")
+    } else {
+      info3 <- paste("")
+    }
+    info <- paste(info1, info3, sep = "")
+  }
+  return(info)
+}
+
+# Validator of Colony Counts on Nonselective Medium - per plate version
+NonselectivePerPlateValidator <- function(x, y) {
+  info <- paste("")
+  if (length(x) == 0) {
+    info <- paste("This cell cannot be empty.\n")
+  } else if (length(x) != length(y)) {
+    info <- paste("Number of counts on non-selective medium must be the same as on selective medium if 'Use pairs of counts on both media for each culture' is selected.\n")
+  }
+  else if (any(is.na(x)) == TRUE) {
+    info <- paste("Non-numeric characters (letters, commas, colons, etc.) are not allowed.\n")
+  }
+  else {
+    if (any(x< 0)) {
+      info1 <- paste("A positive number is required.\n")
+    } else {
+      info1 <- paste("")
+    }
+    if (sum(x) <= 0) {
+      info3 <- paste("At least one colony count must be bigger than 0.\n")
     } else {
       info3 <- paste("")
     }
@@ -345,6 +422,8 @@ comboValidator <- function(DataPlating, DataSelective, DataNonselective) {
   names(DataSelective2) <- colnames(DataSelective[-1])
   names(DataNonselective2) <- colnames(DataNonselective[-1])
   
+  allnames <- names(DataPlating2)
+  
   UnrecognizedRows <- 0
   SameRowAnotherTime <- 0
   RowsEmptyOmmited <- 0
@@ -364,6 +443,8 @@ comboValidator <- function(DataPlating, DataSelective, DataNonselective) {
   checkSel2Counts <- 0
   checkSelZeros <- 0
   checkSelColEmpty <- 0
+  colsToSkip <- vector(mode="numeric")
+  colsWithErrors <- vector(mode="numeric")
   MeanCellsToUnity <- 0
   PlatEffToUnity <- 0
   PvaluePossible <- TRUE
@@ -440,26 +521,29 @@ comboValidator <- function(DataPlating, DataSelective, DataNonselective) {
           if (length(which(DataPlating[1]=="VolumeTotal"))==0) {
             DataPlating <- as.data.frame(rbind(as.matrix(DataPlating), c("VolumeTotal", rep(NA, length(DataPlating[-1])))))
           }
-          DataPlating[which(DataPlating[1]=="VolumeTotal")[1],i] <- paste(warningTooltip("Cannot estimate mean culture size because this value is missing."), sep=" ")
+          DataPlating[which(DataPlating[1]=="VolumeTotal")[1],i] <- paste(softWarningTooltip("Wannot estimate mean culture size because this value is missing. The column will be skipped."), sep=" ")
           DataMissingNonsel <- DataMissingNonsel + 1
+          colsToSkip <- c(colsToSkip, i-1)
         }
         if (ParameterExists["VolumeNonselective",i-1]==FALSE) {
           if (length(which(DataPlating[1]=="VolumeNonselective"))==0) {
             DataPlating <- as.data.frame(rbind(as.matrix(DataPlating), c("VolumeNonselective", rep(NA, length(DataPlating[-1])))))
           }
-          DataPlating[which(DataPlating[1]=="VolumeNonselective")[1],i] <- paste(warningTooltip("Cannot estimate mean culture size because this value is missing."), sep=" ")
+          DataPlating[which(DataPlating[1]=="VolumeNonselective")[1],i] <- paste(softWarningTooltip("Cannot estimate mean culture size because this value is missing. The column will be skipped."), sep=" ")
           DataMissingNonsel <- DataMissingNonsel + 1
+          colsToSkip <- c(colsToSkip, i-1)
         }
         if (ParameterExists["DilutionNonselective",i-1]==FALSE) {
           if (length(which(DataPlating[1]=="DilutionNonselective"))==0) {
             DataPlating <- as.data.frame(rbind(as.matrix(DataPlating), c("DilutionNonselective", rep(NA, length(DataPlating[-1])))))
           }
-          DataPlating[which(DataPlating[1]=="DilutionNonselective")[1],i] <- paste(warningTooltip("Cannot estimate mean culture size because this value is missing."), sep=" ")
+          DataPlating[which(DataPlating[1]=="DilutionNonselective")[1],i] <- paste(softWarningTooltip("Cannot estimate mean culture size because this value is missing. The column will be skipped."), sep=" ")
           DataMissingNonsel <- DataMissingNonsel + 1
+          colsToSkip <- c(colsToSkip, i-1)
         }
         if (ParameterExists["CountsNonselective",i-1]==FALSE) {
-          colnames(DataNonselective)[i] <- paste(colnames(DataNonselective)[i], warningTooltip("Cannot estimate mean culture size because this column is empty."), sep = " ")
           checkNonselColEmpty <- checkNonselColEmpty + 1
+          colsToSkip <- c(colsToSkip, i-1)
         }
       }
       
@@ -476,38 +560,44 @@ comboValidator <- function(DataPlating, DataSelective, DataNonselective) {
           if (length(which(DataPlating[1]=="VolumeTotal"))==0) {
             DataPlating <- as.data.frame(rbind(as.matrix(DataPlating), c("VolumeTotal", rep(NA, length(DataPlating[-1])))))
           }
-          DataPlating[which(DataPlating[1]=="VolumeTotal")[1],i] <- paste(warningTooltip("Cannot estimate plating efficiency because this value is missing."), sep=" ")
+          DataPlating[which(DataPlating[1]=="VolumeTotal")[1],i] <- paste(softWarningTooltip("Cannot estimate plating efficiency because this value is missing. The column will be skipped."), sep=" ")
           DataMissingSel <- DataMissingSel + 1
+          colsToSkip <- c(colsToSkip, i-1)
         }
         if (ParameterExists["VolumeSelective",i-1]==FALSE) {
           if (length(which(DataPlating[1]=="VolumeSelective"))==0) {
             DataPlating <- as.data.frame(rbind(as.matrix(DataPlating), c("VolumeSelective", rep(NA, length(DataPlating[-1])))))
           }
-          DataPlating[which(DataPlating[1]=="VolumeSelective")[1],i] <- paste(warningTooltip("Cannot estimate plating efficiency because this value is missing."), sep=" ")
+          DataPlating[which(DataPlating[1]=="VolumeSelective")[1],i] <- paste(softWarningTooltip("Cannot estimate plating efficiency because this value is missing. The column will be skipped."), sep=" ")
           DataMissingSel <- DataMissingSel + 1
+          colsToSkip <- c(colsToSkip, i-1)
         }
         if (ParameterExists["DilutionSelective",i-1]==FALSE) {
           if (length(which(DataPlating[1]=="DilutionSelective"))==0) {
             DataPlating <- as.data.frame(rbind(as.matrix(DataPlating), c("DilutionSelective", rep(NA, length(DataPlating[-1])))))
           }
-          DataPlating[which(DataPlating[1]=="DilutionSelective")[1],i] <- paste(warningTooltip("Cannot estimate plating efficiency because this value is missing."), sep=" ")
+          DataPlating[which(DataPlating[1]=="DilutionSelective")[1],i] <- paste(softWarningTooltip("Cannot estimate plating efficiency because this value is missing. The column will be skipped."), sep=" ")
           DataMissingSel <- DataMissingSel + 1
+          colsToSkip <- c(colsToSkip, i-1)
         }
       }
       
       # Checking colony counts on selective medium
       if (ParameterExists["CountsSelective",i-1]==FALSE) {
-        colnames(DataSelective)[i] <- paste(colnames(DataSelective)[i], warningTooltip("Cannot calculate mutation rate because no counts were provided."), sep = " ")
+        colnames(DataSelective)[i] <- paste(colnames(DataSelective)[i], softWarningTooltip("This column will be skipped because no counts were provided."), sep = " ")
         checkSelColEmpty <- checkSelColEmpty + 1
+        colsToSkip <- c(colsToSkip, i-1)
       } else if (ParameterExists["CountsSelective",i-1] == TRUE) {
         for (x in 1:nrow(DataSelective)) {
           if (is.na(DataSelective[x,i]) == FALSE ) {
             if (is.na(as.numeric(DataSelective[x,i])) == TRUE) {
               DataSelective[x,i] <- paste(DataSelective[x,i], warningTooltip("Non-numeric characters detected."), sep = " ")
               checkSelNumeric <- checkSelNumeric + 1
+              colsWithErrors <- c(colsWithErrors, i-1)
             } else if (as.numeric(DataSelective[x,i]) < 0) {
               DataSelective[x,i] <- paste(DataSelective[x,i], warningTooltip("A negative (&ge;0) value is required."), sep = " ")
               checkSelNonNeg <- checkSelNonNeg + 1
+              colsWithErrors <- c(colsWithErrors, i-1)
             } else {
               DataSelective2[[i-1]] <- append(DataSelective2[[i-1]], as.numeric(DataSelective[x,i]))
             }
@@ -515,14 +605,17 @@ comboValidator <- function(DataPlating, DataSelective, DataNonselective) {
         }
         DataSelective2[[i-1]] <- DataSelective2[[i-1]][-1]
         if (length(DataSelective2[[i-1]]) == 0) {
-          colnames(DataSelective)[i] <- paste(colnames(DataSelective)[i], warningTooltip("No valid colony counts. Note: only correct inputs (numeric and &ge;0) were considered."), sep = " ")
+          colnames(DataSelective)[i] <- paste(colnames(DataSelective)[i], softWarningTooltip("No valid colony counts. Note: only correct inputs (numeric and &ge;0) were considered. The column will be skipped."), sep = " ")
           checkSelColEmpty <- checkSelColEmpty + 1
+          colsToSkip <- c(colsToSkip, i-1)
         } else if (sum(DataSelective2[[i-1]]) <= 0) {
           colnames(DataSelective)[i] <- paste(colnames(DataSelective)[i], warningTooltip("At least 1 colony count must be bigger than 0. Note: only correct inputs (numeric and &ge;0) were considered."), sep = " ")
           checkSelZeros <- checkSelZeros + 1
+          colsWithErrors <- c(colsWithErrors, i-1)
         } else if (length(DataSelective2[[i-1]]) <= 1) {
           colnames(DataSelective)[i] <- paste(colnames(DataSelective)[i], warningTooltip("At least two colony counts must be provided. Note: only correct inputs (numeric and &ge;0) were considered."), sep = " ")
           checkSel2Counts <- checkSel2Counts + 1
+          colsWithErrors <- c(colsWithErrors, i-1)
         }
       }
       
@@ -531,10 +624,12 @@ comboValidator <- function(DataPlating, DataSelective, DataNonselective) {
         if (is.na(as.numeric(DataPlating[parameterNumbers$CV,i])) == TRUE) {
           DataPlating[parameterNumbers$CV,i] <- paste(DataPlating[parameterNumbers$CV,i], warningTooltip("Non-numeric characters detected."), sep = " ")
           CellNonnumeric <- CellNonnumeric + 1
+          colsWithErrors <- c(colsWithErrors, i-1)
         } else if (as.numeric(DataPlating[parameterNumbers$CV,i]) < 0) {
           DataPlating[parameterNumbers$CV,i] <- paste(DataPlating[parameterNumbers$CV,i], warningTooltip("Coefficient of variation must be a non-negative value (&ge;0)."), sep = " ")
           CellNonpositive <- CellNonpositive + 1
-        } else {
+          colsWithErrors <- c(colsWithErrors, i-1)
+        }  else {
           if (as.numeric(DataPlating[parameterNumbers$CV,i]) < 1e-5 && as.numeric(DataPlating[parameterNumbers$CV,i]) > 0) {
             DataPlating[parameterNumbers$CV,i] <- paste(DataPlating[parameterNumbers$CV,i], softWarningTooltip("Coefficient of variation is small and will be set to 1e-5 for calculations."), sep = " ")
           } else if (as.numeric(DataPlating[parameterNumbers$CV,i]) > 10) {
@@ -552,15 +647,18 @@ comboValidator <- function(DataPlating, DataSelective, DataNonselective) {
         if (is.na(as.numeric(DataPlating[parameterNumbers$Fitness,i])) == TRUE) {
           DataPlating[parameterNumbers$Fitness,i] <- paste(DataPlating[parameterNumbers$Fitness,i], warningTooltip("Non-numeric characters detected."), sep = " ")
           CellNonnumeric <- CellNonnumeric+1
+          colsWithErrors <- c(colsWithErrors, i-1)
         } else if (as.numeric(DataPlating[parameterNumbers$Fitness,i]) <= 0) {
           DataPlating[parameterNumbers$Fitness,i] <- paste(DataPlating[parameterNumbers$Fitness,i], warningTooltip("Fitness must be bigger than 0."), sep = " ")
           CellNonpositive <- CellNonpositive+1
+          colsWithErrors <- c(colsWithErrors, i-1)
         } else {
           DataPlating2["Fitness",i-1] <- as.numeric(DataPlating[parameterNumbers$Fitness,i])
         }
         if (ParameterExists["Lag",i-1]==TRUE) {
           DataPlating[parameterNumbers$Fitness,i] <- paste(DataPlating[parameterNumbers$Fitness,i], warningTooltip("Fitness cannot be used together with Phenotypic lag."), sep = " ")
           TooMuchData <- 1
+          colsWithErrors <- c(colsWithErrors, i-1)
         }
       }
       
@@ -569,9 +667,11 @@ comboValidator <- function(DataPlating, DataSelective, DataNonselective) {
         if (is.na(as.numeric(DataPlating[parameterNumbers$Death,i])) == TRUE) {
           DataPlating[parameterNumbers$Death,i] <- paste(DataPlating[parameterNumbers$Death,i], warningTooltip("Non-numeric characters detected."), sep = " ")
           CellNonnumeric <- CellNonnumeric+1
+          colsWithErrors <- c(colsWithErrors, i-1)
         } else if (as.numeric(DataPlating[parameterNumbers$Death,i]) < 0) {
           DataPlating[parameterNumbers$Death,i] <- paste(DataPlating[parameterNumbers$Death,i], warningTooltip("Death rate must not smaller than 0."), sep = " ")
           CellNonpositive <- CellNonpositive+1
+          colsWithErrors <- c(colsWithErrors, i-1)
         } else {
           DataPlating2["Death",i-1] <- as.numeric(DataPlating[parameterNumbers$Death,i])
         }
@@ -584,9 +684,11 @@ comboValidator <- function(DataPlating, DataSelective, DataNonselective) {
         if (is.na(as.numeric(DataPlating[parameterNumbers$Inoculum,i])) == TRUE) {
           DataPlating[parameterNumbers$Inoculum,i] <- paste(DataPlating[parameterNumbers$Inoculum,i], warningTooltip("Non-numeric characters detected."), sep = " ")
           CellNonnumeric <- CellNonnumeric+1
+          colsWithErrors <- c(colsWithErrors, i-1)
         } else if (as.numeric(DataPlating[parameterNumbers$Inoculum,i]) < 0) {
           DataPlating[parameterNumbers$Inoculum,i] <- paste(DataPlating[parameterNumbers$Inoculum,i], warningTooltip("Inoculum must be not smaller than 0."), sep = " ")
           CellNonpositive <- CellNonpositive+1
+          colsWithErrors <- c(colsWithErrors, i-1)
         } else {
           DataPlating2["Inoculum",i-1] <- as.numeric(DataPlating[parameterNumbers$Inoculum,i])
         }
@@ -599,15 +701,18 @@ comboValidator <- function(DataPlating, DataSelective, DataNonselective) {
         if (is.na(as.numeric(DataPlating[parameterNumbers$Lag,i])) == TRUE) {
           DataPlating[parameterNumbers$Lag,i] <- paste(DataPlating[parameterNumbers$Lag,i], warningTooltip("Non-numeric characters detected."), sep = " ")
           CellNonnumeric <- CellNonnumeric+1
+          colsWithErrors <- c(colsWithErrors, i-1)
         } else if (as.numeric(DataPlating[parameterNumbers$Lag,i]) < 0) {
           DataPlating[parameterNumbers$Lag,i] <- paste(DataPlating[parameterNumbers$Lag,i], warningTooltip("Phenotypic lag must be not smaller than 0."), sep = " ")
           CellNonpositive <- CellNonpositive+1
+          colsWithErrors <- c(colsWithErrors, i-1)
         } else {
           DataPlating2["Lag",i-1] <- as.numeric(DataPlating[parameterNumbers$Lag,i])
         }
         if (ParameterExists["Fitness",i-1]==TRUE) {
           DataPlating[parameterNumbers$Lag,i] <- paste(DataPlating[parameterNumbers$Lag,i], warningTooltip("Phenotypic lag cannot be used together with Fitness and/or Death rate."), sep = " ")
           TooMuchData <- 1
+          colsWithErrors <- c(colsWithErrors, i-1)
         }
       } else {
         DataPlating2["Lag",i-1] <- 0
@@ -618,9 +723,11 @@ comboValidator <- function(DataPlating, DataSelective, DataNonselective) {
         if (is.na(as.numeric(DataPlating[parameterNumbers$Residual,i])) == TRUE) {
           DataPlating[parameterNumbers$Residual,i] <- paste(DataPlating[parameterNumbers$Residual,i], warningTooltip("Non-numeric characters detected."), sep = " ")
           CellNonnumeric <- CellNonnumeric+1
+          colsWithErrors <- c(colsWithErrors, i-1)
         } else if (as.numeric(DataPlating[parameterNumbers$Residual,i]) < 0) {
           DataPlating[parameterNumbers$Residual,i] <- paste(DataPlating[parameterNumbers$Residual,i], warningTooltip("Residual must be not smaller than 0."), sep = " ")
           CellNonpositive <- CellNonpositive+1
+          colsWithErrors <- c(colsWithErrors, i-1)
         } else {
           DataPlating2["Residual",i-1] <- as.numeric(DataPlating[parameterNumbers$Residual,i])
         }
@@ -634,9 +741,11 @@ comboValidator <- function(DataPlating, DataSelective, DataNonselective) {
           if (is.na(as.numeric(DataPlating[parameterNumbers$VolumeTotal,i])) == TRUE) {
             DataPlating[parameterNumbers$VolumeTotal,i] <- paste(DataPlating[parameterNumbers$VolumeTotal,i], warningTooltip("Non-numeric characters detected."), sep = " ")
             CellNonnumeric <- CellNonnumeric+1
+            colsWithErrors <- c(colsWithErrors, i-1)
           } else if (as.numeric(DataPlating[parameterNumbers$VolumeTotal,i]) <= 0) {
             DataPlating[parameterNumbers$VolumeTotal,i] <- paste(DataPlating[parameterNumbers$VolumeTotal,i], warningTooltip("Total culture volume must be a positive value (&gt;0)."), sep = " ")
             CellNonpositive <- CellNonpositive+1
+            colsWithErrors <- c(colsWithErrors, i-1)
           } else {
             DataPlating2["VolumeTotal",i-1] <- as.numeric(DataPlating[parameterNumbers$VolumeTotal,i])
           }
@@ -653,9 +762,11 @@ comboValidator <- function(DataPlating, DataSelective, DataNonselective) {
         if (is.na(as.numeric(DataPlating[parameterNumbers$MeanCells,i])) == TRUE) {
           DataPlating[parameterNumbers$MeanCells,i] <- paste(DataPlating[parameterNumbers$MeanCells,i], warningTooltip("Non-numeric characters detected."), sep = " ")
           CellNonnumeric <- CellNonnumeric+1
+          colsWithErrors <- c(colsWithErrors, i-1)
         } else if (as.numeric(DataPlating[parameterNumbers$MeanCells,i]) <= 0) {
           DataPlating[parameterNumbers$MeanCells,i] <- paste(DataPlating[parameterNumbers$MeanCells,i], warningTooltip("Mean number of cells must be a positive value (&gt;0)."), sep = " ")
           CellNonpositive <- CellNonpositive+1
+          colsWithErrors <- c(colsWithErrors, i-1)
         } else {
           DataPlating2["MeanCells",i-1] <- as.numeric(DataPlating[parameterNumbers$MeanCells,i])
         }
@@ -673,9 +784,11 @@ comboValidator <- function(DataPlating, DataSelective, DataNonselective) {
           if (is.na(as.numeric(DataPlating[parameterNumbers$VolumeNonselective,i])) == TRUE) {
             DataPlating[parameterNumbers$VolumeNonselective,i] <- paste(DataPlating[parameterNumbers$VolumeNonselective,i], warningTooltip("Non-numeric characters detected."), sep = " ")
             CellNonnumeric <- CellNonnumeric + 1
+            colsWithErrors <- c(colsWithErrors, i-1)
           } else if (as.numeric(DataPlating[parameterNumbers$VolumeNonselective,i]) <= 0) {
             DataPlating[parameterNumbers$VolumeNonselective,i] <- paste(DataPlating[parameterNumbers$VolumeNonselective,i], warningTooltip("Volume plated on non-selective medium must be a positive value (&gt;0)."), sep = " ")
             CellNonpositive <- CellNonpositive + 1
+            colsWithErrors <- c(colsWithErrors, i-1)
           } else {
             DataPlating2["VolumeNonselective",i-1] <- as.numeric(DataPlating[parameterNumbers$VolumeNonselective,i])
           }
@@ -685,9 +798,11 @@ comboValidator <- function(DataPlating, DataSelective, DataNonselective) {
           if (is.na(as.numeric(DataPlating[parameterNumbers$DilutionNonselective,i])) == TRUE) {
             DataPlating[parameterNumbers$DilutionNonselective,i] <- paste(DataPlating[parameterNumbers$DilutionNonselective,i], warningTooltip("Non-numeric characters detected."), sep = " ")
             CellNonnumeric <- CellNonnumeric + 1
+            colsWithErrors <- c(colsWithErrors, i-1)
           } else if (as.numeric(DataPlating[parameterNumbers$DilutionNonselective,i]) <= 0) {
             DataPlating[parameterNumbers$DilutionNonselective,i] <- paste(DataPlating[parameterNumbers$DilutionNonselective,i], warningTooltip("Dilution factor on non-selective medium must be a positive value (&gt;0)."), sep = " ")
             CellNonpositive <- CellNonpositive + 1
+            colsWithErrors <- c(colsWithErrors, i-1)
           } else {
             DataPlating2["DilutionNonselective",i-1] <- as.numeric(DataPlating[parameterNumbers$DilutionNonselective,i])
           }
@@ -699,9 +814,11 @@ comboValidator <- function(DataPlating, DataSelective, DataNonselective) {
               if (is.na(as.numeric(DataNonselective[x,i])) == TRUE) {
                 DataNonselective[x,i] <- paste(DataNonselective[x,i], warningTooltip("Non-numeric characters detected."), sep = " ")
                 checkNonselNumeric <- checkNonselNumeric + 1
+                colsWithErrors <- c(colsWithErrors, i-1)
               } else if (as.numeric(DataNonselective[x,i]) < 0) {
                 DataNonselective[x,i] <- paste(DataNonselective[x,i], warningTooltip("A non-negative (&ge;0) value is required."), sep = " ")
                 checkNonselNonNeg <- checkNonselNonNeg + 1
+                colsWithErrors <- c(colsWithErrors, i-1)
               } else {
                 DataNonselective2[[i-1]] <- append(DataNonselective2[[i-1]], as.numeric(DataNonselective[x,i]))
               }
@@ -709,11 +826,12 @@ comboValidator <- function(DataPlating, DataSelective, DataNonselective) {
           }
           DataNonselective2[[i-1]] <- DataNonselective2[[i-1]][-1]
           if (length(DataNonselective2[[i-1]]) == 0) {
-            colnames(DataNonselective)[i] <- paste(colnames(DataNonselective)[i], warningTooltip("No valid colony counts. Note: only correct inputs (numeric and &ge;0) were considered."), sep = " ")
             checkNonselColEmpty <- checkNonselColEmpty + 1
+            colsToSkip <- c(colsToSkip, i-1)
           } else if (sum(DataNonselective2[[i-1]]) <= 0) {
             colnames(DataNonselective)[i] <- paste(colnames(DataNonselective)[i], warningTooltip("At least 1 colony count must be bigger than 0. Note: only correct inputs (numeric and &ge;0) were considered."), sep = " ")
             checkNonselZeros <- checkNonselZeros + 1
+            colsWithErrors <- c(colsWithErrors, i-1)
           } else if (length(DataNonselective2[[i-1]]) <= 1) {
             if (CVFromCounts[i-1]) {
               colnames(DataNonselective)[i] <- paste(colnames(DataNonselective)[i], softWarningTooltip("Not enough colony counts to estimate CV, therefore CV will not be calculated. Note: only correct inputs (numeric and &ge;0) were considered."), sep = " ")
@@ -729,6 +847,7 @@ comboValidator <- function(DataPlating, DataSelective, DataNonselective) {
             DataPlating[parameterNumbers$DilutionNonselective,i] <- paste(DataPlating[parameterNumbers$DilutionNonselective,i], warningTooltip("Amount plated on non-selective medium (Volume/Dilution) exceeds Total culture volume."), sep = " ")
             DataPlating[parameterNumbers$VolumeNonselective,i] <- paste(DataPlating[parameterNumbers$VolumeNonselective,i], warningTooltip("Amount plated on non-selective medium (Volume/Dilution) exceeds Total culture volume."), sep = " ")
             ColumnPlatingTooBigNonsel <- ColumnPlatingTooBigNonsel + 1
+            colsWithErrors <- c(colsWithErrors, i-1)
           }
         }
       }
@@ -737,9 +856,11 @@ comboValidator <- function(DataPlating, DataSelective, DataNonselective) {
         if (is.na(as.numeric(DataPlating[parameterNumbers$PlatingEfficiency,i])) == TRUE) {
           DataPlating[parameterNumbers$PlatingEfficiency,i] <- paste(DataPlating[parameterNumbers$PlatingEfficiency,i], warningTooltip("Non-numeric characters detected."), sep = " ")
           CellNonnumeric <- CellNonnumeric+1
+          colsWithErrors <- c(colsWithErrors, i-1)
         } else if (as.numeric(DataPlating[parameterNumbers$PlatingEfficiency,i]) <= 0 | as.numeric(DataPlating[parameterNumbers$PlatingEfficiency,i]) > 1) {
           DataPlating[parameterNumbers$PlatingEfficiency,i] <- paste(DataPlating[parameterNumbers$PlatingEfficiency,i], warningTooltip("Plating efficiency must be between 0 and 1."), sep = " ")
           CellNonpositive <- CellNonpositive+1
+          colsWithErrors <- c(colsWithErrors, i-1)
         } else {
           DataPlating2["PlatingEfficiency",i-1] <- as.numeric(DataPlating[parameterNumbers$PlatingEfficiency,i])
         }
@@ -754,9 +875,11 @@ comboValidator <- function(DataPlating, DataSelective, DataNonselective) {
           if (is.na(as.numeric(DataPlating[parameterNumbers$VolumeSelective,i])) == TRUE) {
             DataPlating[parameterNumbers$VolumeSelective,i] <- paste(DataPlating[parameterNumbers$VolumeSelective,i], warningTooltip("Non-numeric characters detected."), sep = " ")
             CellNonnumeric <- CellNonnumeric + 1
+            colsWithErrors <- c(colsWithErrors, i-1)
           } else if (as.numeric(DataPlating[parameterNumbers$VolumeSelective,i]) <= 0) {
             DataPlating[parameterNumbers$VolumeSelective,i] <- paste(DataPlating[parameterNumbers$VolumeSelective,i], warningTooltip("Volume plated on selective medium must be a positive value (&gt;0)."), sep = " ")
             CellNonpositive <- CellNonpositive + 1
+            colsWithErrors <- c(colsWithErrors, i-1)
           } else {
             DataPlating2["VolumeSelective",i-1] <- as.numeric(DataPlating[parameterNumbers$VolumeSelective,i])
           }
@@ -766,9 +889,11 @@ comboValidator <- function(DataPlating, DataSelective, DataNonselective) {
           if (is.na(as.numeric(DataPlating[parameterNumbers$DilutionSelective,i])) == TRUE) {
             DataPlating[parameterNumbers$DilutionSelective,i] <- paste(DataPlating[parameterNumbers$DilutionSelective,i], warningTooltip("Non-numeric characters detected."), sep = " ")
             CellNonnumeric <- CellNonnumeric + 1
+            colsWithErrors <- c(colsWithErrors, i-1)
           } else if (as.numeric(DataPlating[parameterNumbers$DilutionSelective,i]) <= 0) {
             DataPlating[parameterNumbers$DilutionSelective,i] <- paste(DataPlating[parameterNumbers$DilutionSelective,i], warningTooltip("Dilution factor on selective medium must be a positive value (&gt;0)."), sep = " ")
             CellNonpositive <- CellNonpositive + 1
+            colsWithErrors <- c(colsWithErrors, i-1)
           } else {
             DataPlating2["DilutionSelective",i-1] <- as.numeric(DataPlating[parameterNumbers$DilutionSelective,i])
           }
@@ -779,6 +904,7 @@ comboValidator <- function(DataPlating, DataSelective, DataNonselective) {
             DataPlating[parameterNumbers$DilutionSelective,i] <- paste(DataPlating[parameterNumbers$DilutionSelective,i], warningTooltip("Amount plated on selective medium (Volume/Dilution) exceeds Total culture volume."), sep = " ")
             DataPlating[parameterNumbers$VolumeSelective,i] <- paste(DataPlating[parameterNumbers$VolumeSelective,i], warningTooltip("Amount plated on selective medium (Volume/Dilution) exceeds Total culture volume."), sep = " ")
             ColumnPlatingTooBigSel <- ColumnPlatingTooBigSel + 1
+            colsWithErrors <- c(colsWithErrors, i-1)
           }
         }
         # Checking if phenotypic lag and death/fitness have been specified together
@@ -788,10 +914,44 @@ comboValidator <- function(DataPlating, DataSelective, DataNonselective) {
       }
     }
     
+    colnamesToSkip <- vector(mode = "character")
+    if (length(colsToSkip) > 0) {
+      colsToSkip <- sort(unique(colsToSkip))
+      DataPlating2 <- DataPlating2[,-colsToSkip]
+      DataSelective2 <- DataSelective2[-colsToSkip]
+      DataNonselective2 <- DataNonselective2[-colsToSkip]
+      
+      for (i in colsToSkip) {
+        colnames(DataPlating)[i+1] <- paste(colnames(DataPlating)[i+1], softWarningTooltip("This column will be skipped due to missing data."), sep = " ")
+        colnames(DataSelective)[i+1] <- paste(colnames(DataSelective)[i+1], softWarningTooltip("This column will be skipped due to missing data."), sep = " ")
+        colnames(DataNonselective)[i+1] <- paste(colnames(DataNonselective)[i+1], softWarningTooltip("This column will be skipped due to missing data."), sep = " ")
+      }
+      
+      colnamesToSkip <- allnames[colsToSkip]
+    }
+    
+    colnamesWithErrors <- vector(mode = "character")
+    colnamesWithErrorsButSkipped <- vector(mode = "character")
+    colsWithErrorsButSkipped <- vector(mode = "numeric")
+    if (length(colsWithErrors) > 0) {
+      colsWithErrors <- sort(unique(colsWithErrors))
+      if (length(colsToSkip) > 0) {
+        colsWithErrorsButSkipped <- colsWithErrors[which(colsWithErrors %in% colsToSkip)]
+        colsWithErrors <- colsWithErrors[-which(colsWithErrors %in% colsToSkip)]
+      }
+      
+      colnamesWithErrors <- allnames[colsWithErrors]
+      
+      if (length(colsWithErrorsButSkipped) > 0) {
+        colnamesWithErrorsButSkipped <- allnames[colsWithErrorsButSkipped]
+      }
+    }
+    
     errorList <- ""
     warningList <- ""
     
     warningList <- paste(ifelse(!is.null(colsToRemove), paste("Columns", paste(colsToRemove, collapse = ", "), "were removed because they were empty.\n", sep = " "), ""),
+                         ifelse(length(colsToSkip) > 0, paste("Columns", paste(colnamesToSkip, collapse = ", "), "will be skipped due to missing data.\n", sep = " "), ""),
                          ifelse(PvaluePossible==FALSE, "<em>P</em> values cannot be calculated because there is only one valid dataset.\n", ""),
                          ifelse(MeanCellsToUnity != 0, paste("In", MeanCellsToUnity, "dataset(s), Total culture size was set to 1 because other data were not provided.\n", sep = " "), ""),
                          ifelse(PlatEffToUnity != 0, paste("In", PlatEffToUnity, "dataset(s), plating efficiency was set to 1 because other data were not provided.\n", sep = " "), ""),
@@ -800,22 +960,20 @@ comboValidator <- function(DataPlating, DataSelective, DataNonselective) {
                          ifelse(RowsEmptyOmmited != 0, paste(RowsEmptyOmmited, "row(s) in Experiment parameters are empty and therefore were skipped.\n", sep = " "), ""),
                          sep = "")
     
-    errorList <- paste(ifelse(CellNonnumeric != 0, paste(CellNonnumeric, "input(s) in Experiment parameters contain(s) non-numerical characters.\n", sep = " "), ""),
+    errorList <- paste(ifelse(length(colsWithErrors) > 0, paste("<i class='fa fa-exclamation-triangle' style = 'color:#b94a48'></i> <font color = '#b94a48'><b>Columns", paste(colnamesWithErrors, collapse = ", "), "contain fatal errors that need to be resolved before continuing.</b></font>\n", sep = " "), ""),
+                       ifelse(length(colsWithErrorsButSkipped) > 0, paste("<i class='fa fa-exclamation-triangle' style = 'color:#b94a48'></i> Columns", paste(colnamesWithErrorsButSkipped, collapse = ", "), "contain errors but the column was skipped due to missing data.\n", sep = " "), ""),
+                       ifelse(CellNonnumeric != 0, paste(CellNonnumeric, "input(s) in Experiment parameters contain(s) non-numerical characters.\n", sep = " "), ""),
                        ifelse(CellNonpositive != 0, paste(CellNonpositive, "input(s) in Experiment parameters contain(s) values out of bounds.\n", sep = " "), ""),
-                       ifelse(DataMissingNonsel != 0, paste("In", DataMissingNonsel, "dataset(s), Total culture size could not be estimated due to missing data.\n", sep = " "), ""),
                        ifelse(ColumnPlatingTooBigNonsel != 0, paste("In", ColumnPlatingTooBigNonsel, "dataset(s) in Counts on non-selective medium, plating efficiency is bigger than 1.\n", sep = " "), ""),
                        ifelse(checkNonselNumeric != 0, paste(checkNonselNumeric, "count(s) on non-selective medium contain(s) non-numerical characters.\n", sep = " "), ""),
                        ifelse(checkNonselNonNeg != 0, paste(checkNonselNonNeg, "count(s) on non-selective medium are smaller than 0.\n", sep = " "), ""),
                        ifelse(checkNonselZeros != 0, paste(checkNonselZeros, "dataset(s) in Counts on non-selective medium do not contain any positive value.\n", sep = " "), ""),
-                       ifelse(checkNonselColEmpty != 0, paste(checkNonselColEmpty, "dataset(s) in Counts on non-selective do not contain any value.\n", sep = " "), ""),
-                       ifelse(DataMissingSel != 0, paste("In", DataMissingSel, "dataset(s), plating efficiency could not be estimated due to missing data.\n", sep = " "), ""),
                        ifelse(ColumnPlatingTooBigSel != 0, paste("In", ColumnPlatingTooBigSel, "dataset(s) in Counts on selective medium, plating efficiency is bigger than 1.\n", sep = " "), ""),
                        ifelse(ColumnTooMuchData != 0, paste("In", ColumnTooMuchData, "dataset(s), both Phenotypic lag and Fitness have been specified. Phenotypic lag cannot be used together with Fitness.\n", sep = " "), ""),
                        ifelse(checkSelNumeric != 0, paste(checkSelNumeric, "count(s) on selective medium contain(s) numerical characters.\n", sep = " "), ""),
                        ifelse(checkSelNonNeg != 0, paste(checkSelNonNeg, "count(s) on selective medium are smaller than 0.\n", sep = " "), ""),
                        ifelse(checkSelZeros != 0, paste(checkSelZeros, "dataset(s) in Counts on selective medium do not contain any positive value.\n", sep = " "), ""),
                        ifelse(checkSel2Counts != 0, paste(checkSel2Counts, "dataset(s) in Counts on selective medium do not contain only one count.\n", sep = " "), ""),
-                       ifelse(checkSelColEmpty != 0, paste(checkSelColEmpty, "dataset(s) in Counts on selective do not contain any value.\n", sep = " "), ""),
                        sep = "")
     
     checkMsgPlating <- sum(MeanCellsToUnity, PlatEffToUnity, UnrecognizedRows, SameRowAnotherTime, RowsEmptyOmmited, CellNonnumeric, CellNonpositive)
