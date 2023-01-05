@@ -194,7 +194,7 @@ std::vector<double> aux_seq_integrate_s(double e=1, double w=1, double d=0, doub
   int k;
   std::vector<double> res(n+1);
   
-  if (e==1 & d==0) {
+  if ((e==1) && (d==0)) {
     auto f = [&r, &k](double x) {
       return (r*pow(x,r)*pow(1.-x,k-1));
     };
@@ -1422,36 +1422,38 @@ std::vector<double> optim_m(double current_m, double lower_m, double upper_m, st
   derivatives(lower_U, lower_J, lower_loglik, lower_m, seq, len, data, k, poisson, false);
   if(!std::isfinite(lower_U) || !std::isfinite(lower_J) || !std::isfinite(lower_loglik)) {derivatives_boost(lower_U, lower_J, lower_loglik, lower_m, seq, len, data, k, poisson, false);};
   
-  if(std::abs(upper_U)<1e-9){
+  if(std::abs(upper_U)<1e-6){
     derivatives(upper_U, upper_J, upper_loglik, upper_m, seq, len, data, k, poisson, true);
     if(!std::isfinite(upper_U) || !std::isfinite(upper_J) || !std::isfinite(upper_loglik)) {derivatives_boost(upper_U, upper_J, upper_loglik, upper_m, seq, len, data, k, poisson, true);};
     return std::vector<double>{upper_m,upper_U,upper_J,upper_loglik};
   };
   
-  if(std::abs(lower_U)<1e-9){
+  if(std::abs(lower_U)<1e-6){
     derivatives(lower_U, lower_J, lower_loglik, lower_m, seq, len, data, k, poisson, true);
     if(!std::isfinite(lower_U) || !std::isfinite(lower_J) || !std::isfinite(lower_loglik)) {derivatives_boost(lower_U, lower_J, lower_loglik, lower_m, seq, len, data, k, poisson, true);};
     return std::vector<double>{lower_m,lower_U,lower_J,lower_loglik};
   };
   
   while(upper_U>0){
+    checkUserInterrupt();
     lower_m=upper_m;lower_U=upper_U;lower_J=upper_J;lower_loglik=upper_loglik;
     upper_m*=5;
     derivatives(upper_U, upper_J, upper_loglik, upper_m, seq, len, data, k, poisson, false);
     if(!std::isfinite(upper_U) || !std::isfinite(upper_J) || !std::isfinite(upper_loglik)) {derivatives_boost(upper_U, upper_J, upper_loglik, upper_m, seq, len, data, k, poisson, false);};
-    if(std::abs(upper_U)<1e-9){
+    if(std::abs(upper_U)<1e-6){
       derivatives(upper_U, upper_J, upper_loglik, upper_m, seq, len, data, k, poisson, true);
       if(!std::isfinite(upper_U) || !std::isfinite(upper_J) || !std::isfinite(upper_loglik)) {derivatives_boost(upper_U, upper_J, upper_loglik, upper_m, seq, len, data, k, poisson, true);};
       return std::vector<double>{upper_m,upper_U,upper_J,upper_loglik};
     };
   };
   while(lower_U<0){
+    checkUserInterrupt();
     upper_m=lower_m;upper_U=lower_U;upper_J=lower_J;upper_loglik=lower_loglik;
     lower_m/=10;
     if (lower_m<1e-24) {return {1e-20};};
     derivatives(lower_U, lower_J, lower_loglik, lower_m, seq, len, data, k, poisson, false);
     if(!std::isfinite(lower_U) || !std::isfinite(lower_J) || !std::isfinite(lower_loglik)) {derivatives_boost(lower_U, lower_J, lower_loglik, lower_m, seq, len, data, k, poisson, false);};
-    if(std::abs(lower_U)<1e-9){
+    if(std::abs(lower_U)<1e-6){
       derivatives(lower_U, lower_J, lower_loglik, lower_m, seq, len, data, k, poisson, true);
       if(!std::isfinite(lower_U) || !std::isfinite(lower_J) || !std::isfinite(lower_loglik)) {derivatives_boost(lower_U, lower_J, lower_loglik, lower_m, seq, len, data, k, poisson, true);};
       return std::vector<double>{lower_m,lower_U,lower_J,lower_loglik};
@@ -1471,7 +1473,8 @@ std::vector<double> optim_m(double current_m, double lower_m, double upper_m, st
   if(verbose) {Rcout<< "U: " << current_U << " J: " << current_J << " loglik: " << current_loglik << " m: " << current_m << "\n\n";};
   if ((!std::isfinite(current_U)) || (!std::isfinite(current_J)) || (!std::isfinite(current_loglik))) {return {-1.0};};
   
-  while(std::abs(current_U)>1.0e-9){
+  while(std::abs(current_U)>1.0e-6){
+    checkUserInterrupt();
     iter++;
     if (iter>50) {return {-1.0};};
     
@@ -1520,6 +1523,7 @@ double root_m(double current_m, double lower_m, double upper_m, std::vector<doub
     if (upper_loglik<lower_loglik){
       int n=0;
       while(upper_loglik>0){
+        checkUserInterrupt();
         n++;
         if (n>100) {return -1;}
         lower_m=upper_m;
@@ -1533,6 +1537,7 @@ double root_m(double current_m, double lower_m, double upper_m, std::vector<doub
     } else {
       int n=0;
       while(lower_loglik>0){
+        checkUserInterrupt();
         n++;
         if (n>100) {return -1;}
         upper_m=lower_m;
@@ -1563,6 +1568,7 @@ double root_m(double current_m, double lower_m, double upper_m, std::vector<doub
   if(verbose) {Rcout << "Starting m: " << current_m << " Starting U: " << current_U << " Starting J: " << current_J << " Starting loglik: " << current_loglik << "\n";};
   
   while(std::abs(current_loglik)>1e-6){
+    checkUserInterrupt();
     iter++;
     if (iter>50) {return -1.0;};
     
@@ -1610,7 +1616,7 @@ std::vector<double> combo_optim_m(double current_m, double lower_m, double upper
   upper_U=U1+R*U2;
   upper_J=J1+R*R*J2;
   upper_loglik=loglik1+loglik2;
-  if (std::abs(upper_U)<1e-9) {return std::vector<double>{upper_m,upper_loglik};};
+  if (std::abs(upper_U)<1e-6) {return std::vector<double>{upper_m,upper_loglik};};
   
   derivatives(U1, J1, loglik1, lower_m, seq1, len1, data1, k1, poisson1, true);
   if(!std::isfinite(U1) || !std::isfinite(J1) || !std::isfinite(loglik1)) {derivatives_boost(U1, J1, loglik1, lower_m, seq1, len1, data1, k1, poisson1, true);};
@@ -1619,9 +1625,10 @@ std::vector<double> combo_optim_m(double current_m, double lower_m, double upper
   lower_U=U1+R*U2;
   lower_J=J1+R*R*J2;
   lower_loglik=loglik1+loglik2;
-  if (std::abs(lower_U)<1e-9) {return std::vector<double>{lower_m,lower_loglik};};
+  if (std::abs(lower_U)<1e-6) {return std::vector<double>{lower_m,lower_loglik};};
   
   while(upper_U>0){
+    checkUserInterrupt();
     lower_m=upper_m;lower_U=upper_U;lower_J=upper_J;lower_loglik=upper_loglik;
     upper_m*=5;
     derivatives(U1, J1, loglik1, upper_m, seq1, len1, data1, k1, poisson1, true);
@@ -1631,9 +1638,10 @@ std::vector<double> combo_optim_m(double current_m, double lower_m, double upper
     upper_U=U1+R*U2;
     upper_J=J1+R*R*J2;
     upper_loglik=loglik1+loglik2;
-    if (std::abs(upper_U)<1e-9) {return std::vector<double>{upper_m,upper_loglik};};
+    if (std::abs(upper_U)<1e-6) {return std::vector<double>{upper_m,upper_loglik};};
   };
   while(lower_U<0){
+    checkUserInterrupt();
     upper_m=lower_m;upper_U=lower_U;upper_J=lower_J;upper_loglik=lower_loglik;
     lower_m/=10;
     if (lower_m<1e-24) {return {0};};
@@ -1644,7 +1652,7 @@ std::vector<double> combo_optim_m(double current_m, double lower_m, double upper
     lower_U=U1+R*U2;
     lower_J=J1+R*R*J2;
     lower_loglik=loglik1+loglik2;
-    if (std::abs(lower_U)<1e-9) {return std::vector<double>{lower_m,lower_loglik};};
+    if (std::abs(lower_U)<1e-6) {return std::vector<double>{lower_m,lower_loglik};};
   };
   
   if(verbose) {Rcout << "boundaries:: m: " << lower_m << " " << upper_m << "\n";};
@@ -1664,7 +1672,8 @@ std::vector<double> combo_optim_m(double current_m, double lower_m, double upper
   if(verbose) {Rcout<< "U: " << current_U << " J: " << current_J << " loglik: " << current_loglik << " m: " << current_m << "\n\n";};
   if ((!std::isfinite(current_U)) || (!std::isfinite(current_J)) || (!std::isfinite(current_loglik))) {return {-1.0};};
   
-  while(std::abs(current_U)>1.0e-9){
+  while(std::abs(current_U)>1.0e-6){
+    checkUserInterrupt();
     iter++;
     if (iter>50) {return {-1.0};};
     
@@ -1735,6 +1744,7 @@ std::vector<double> optim_m_every_Nt(double current_m, double lower_m, double up
   if (std::abs(lower_U)<1e-6) {return std::vector<double>{lower_m,lower_loglik};};
   
   while(upper_U>0){
+    checkUserInterrupt();
     lower_m=upper_m;lower_U=upper_U;lower_J=upper_J;lower_loglik=upper_loglik;
     upper_m*=5;
     proxy_U=0; proxy_J=0; proxy_loglik=0; upper_U=0; upper_J=0; upper_loglik=0;
@@ -1751,6 +1761,7 @@ std::vector<double> optim_m_every_Nt(double current_m, double lower_m, double up
     if (std::abs(upper_U)<1e-6) {return std::vector<double>{upper_m,upper_loglik};};
   };
   while(lower_U<0){
+    checkUserInterrupt();
     upper_m=lower_m;upper_U=lower_U;upper_J=lower_J;upper_loglik=lower_loglik;
     lower_m/=10;
     if (lower_m<1e-24) {return {0};};
@@ -1790,6 +1801,7 @@ std::vector<double> optim_m_every_Nt(double current_m, double lower_m, double up
   if ((!std::isfinite(current_U)) || (!std::isfinite(current_J)) || (!std::isfinite(current_loglik))) {return {-1.0};};
   
   while(std::abs(current_U)>1.0e-6){
+    checkUserInterrupt();
     iter++;
     if (iter>70) {return {-1.0};};
     
@@ -1866,6 +1878,7 @@ double root_m_every_Nt(double current_m, double lower_m, double upper_m, Rcpp::L
     if (upper_loglik<lower_loglik){
       int n=0;
       while(upper_loglik>0){
+        checkUserInterrupt();
         n++;
         if (n>100) {return -1;}
         lower_m=upper_m;
@@ -1886,6 +1899,7 @@ double root_m_every_Nt(double current_m, double lower_m, double upper_m, Rcpp::L
     } else {
       int n=0;
       while(lower_loglik>0){
+        checkUserInterrupt();
         n++;
         if (n>100) {return -1;}
         upper_m=lower_m;
@@ -1930,6 +1944,7 @@ double root_m_every_Nt(double current_m, double lower_m, double upper_m, Rcpp::L
   if(verbose) {Rcout << "Starting m: " << current_m << " Starting U: " << current_U << " Starting J: " << current_J << " Starting loglik: " << current_loglik << "\n";};
   
   while(std::abs(current_loglik)>1e-6){
+    checkUserInterrupt();
     iter++;
     if (iter>50) {return -1.0;};
     
@@ -2109,6 +2124,7 @@ std::vector<double> optim_m_from_probs(double &current_m, double &lower_m, doubl
   if (std::abs(lower_U)<1e-6) {return std::vector<double>{lower_m,lower_loglik};};
 
   while(upper_U>0){
+    checkUserInterrupt();
     lower_m=upper_m;lower_U=upper_U;lower_J=upper_J;lower_loglik=upper_loglik;
     upper_m*=5;
     derivatives_power(U1, J1, loglik1, upper_m, prob1, seq1, k1, poisson1, true);
@@ -2121,6 +2137,7 @@ std::vector<double> optim_m_from_probs(double &current_m, double &lower_m, doubl
     if (std::abs(upper_U)<1e-6) {return std::vector<double>{upper_m,upper_loglik};};
   };
   while(lower_U<0){
+    checkUserInterrupt();
     upper_m=lower_m;upper_U=lower_U;upper_J=lower_J;upper_loglik=lower_loglik;
     lower_m/=10;
     if (lower_m<1e-24) {return {0};};
@@ -2152,6 +2169,7 @@ std::vector<double> optim_m_from_probs(double &current_m, double &lower_m, doubl
   if ((!std::isfinite(current_U)) || (!std::isfinite(current_J)) || (!std::isfinite(current_loglik))) {return {-1.0};};
   
   while(std::abs(current_U)>1.0e-6){
+    checkUserInterrupt();
     iter++;
     if (iter>50) {return {-1.0};};
     
@@ -2192,11 +2210,11 @@ std::vector<double> prob_mutations(double m, int n, double e=1, double w=1, doub
   std::vector<double> seq(n);
   std::vector<double> prob(n);
   
-  if (death==0 & lag==0 & phi==0) {
+  if ((death==0) && (lag==0) && (phi==0)) {
     seq=aux_seq(e, w, n-1);
-  } else if (lag!=0 & w==1 & death==0 & phi==0) {
+  } else if ((lag!=0) && (w==1) && (death==0) && (phi==0)) {
     seq=aux_seq_lag_s_ext(e, lag, n-1);
-  } else if (death!=0 & lag==0 & phi==0) {
+  } else if ((death!=0) && (lag==0) && (phi==0)) {
     seq=aux_seq_death_ext(e, w, death/(1.-death), n-1);
   } else {
     seq=aux_seq_integrate_s(e, w, death/(1.-death), lag, phi, n-1);
