@@ -1,3 +1,5 @@
+:: Code by Extrarius adapted from https://stackoverflow.com/a/34749932 distributed under CC BY-SA 3.0 licence
+
 @ECHO OFF
 ECHO Searching for install path of latest version of R in registry...
 SETLOCAL ENABLEEXTENSIONS
