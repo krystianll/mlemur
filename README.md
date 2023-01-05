@@ -6,7 +6,7 @@
 
 3. Proceed to the next part. You can either follow instruction for installing the pre-compiled binary or compiling from the source file.
 ### Installation using pre-compiled binary
-1. Download mlemur zip file from <https://github.com/krystianll/mlemur/blob/master/binaries/Windows/mlemur_0.9.5.zip>
+1. Download mlemur zip file from <https://github.com/krystianll/mlemur/blob/master/binaries/Windows/mlemur_0.9.6.zip>
 
 2. Locate and run R.exe
 
@@ -59,8 +59,8 @@ Then follow the instructions in the new window.
 1. Locate and run R.app
 
 2. Download mlemur tgz file corresponding to the verion of R you have installed.
-- For Intel Macs use the following link: <https://github.com/krystianll/mlemur/blob/master/binaries/macOS_intel/mlemur_0.9.5.tgz>
-- For Apple Silicon (M1, M2) Macs use the following link: <https://github.com/krystianll/mlemur/blob/master/binaries/macOS_arm/mlemur_0.9.5.tgz>
+- For Intel Macs use the following link: <https://github.com/krystianll/mlemur/blob/master/binaries/macOS_intel/mlemur_0.9.6.tgz>
+- For Apple Silicon (M1, M2) Macs use the following link: <https://github.com/krystianll/mlemur/blob/master/binaries/macOS_arm/mlemur_0.9.6.tgz>
 - If you're not sure which version to choose, inspect the text in R main window:
 - Platform: aarch64-apple-darwinXX (64-bit) (with XX some number) means you should download the arm version
 - Platform: x86_64-apple-darwinXX (64-bit) (with XX some number) means you should download the intel version
@@ -77,11 +77,11 @@ You might be asked to confirm by clicking "Yes" or to select server from which t
 
 5. In the top-left menu, in the "Packages repository" section change CRAN (binaries) to Local Binary Package and then click Install in the bottom-right part of the window
 
-6. Locate the mlemur_0.9.5.tgz file and press Open
+6. Locate the mlemur_0.9.6.tgz file and press Open
 
-Alternative 4-6. If the above doesn't work, in the R main window, select "Misc" in the menu bar at the top of the window and then "Change Working Directory…". Locate the folder containing mlemur_0.9.5.tgz file and press Open. Then in the R console use the following command and press Enter:
+Alternative 4-6. If the above doesn't work, in the R main window, select "Misc" in the menu bar at the top of the window and then "Change Working Directory…". Locate the folder containing mlemur_0.9.6.tgz file and press Open. Then in the R console use the following command and press Enter:
 ```
-install.packages("mlemur_0.9.5.tgz")
+install.packages("mlemur_0.9.6.tgz")
 ```
 ### Installation using source files (requires compilation)
 1. Open Terminal.app. To do this, press and hold Command ⌘ key and then press Space key. Type Terminal and press Enter.
