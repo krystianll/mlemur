@@ -1,10 +1,10 @@
 Package: mlemur
 Type: Package
 Title: MLE MUtatution Rate Calculator
-Version: 0.9.5
-Date: 2022-11-07
+Version: 0.9.6
+Date: 2023-01-05
 Authors@R: c(person("Krystian", "Lazowski", role = c("aut", "cre"),
-	           email = "klazowski@ibb.waw.pl", comment = c(ORCID="0000-0001-5163-7026")),
+	           email = "lazowski.krystian@outlook.com", comment = c(ORCID="0000-0001-5163-7026")),
 	           person("Qi", "Zheng", role = "ctb"))
 Author: Krystian Lazowski [aut, cre] (<https://orcid.org/0000-0001-5163-7026>),
         Qi Zheng [ctb]
@@ -20,7 +20,7 @@ SystemRequirementsNote: 'MPFR' (MP Floating-Point Reliable Library,
 Depends: R (>= 4.1.0), shiny
 Imports: Rcpp (>= 1.0.9), stats, utils, shinyFeedback, shinyWidgets, shinyjqui, shinyjs, writexl, readxl, clipr, reactable, Ryacas, boot
 LinkingTo: Rcpp, BH
-RoxygenNote: 7.2.2
+RoxygenNote: 7.2.3
 NeedsCompilation: yes
 StagedInstall: yes
 Encoding: UTF-8
