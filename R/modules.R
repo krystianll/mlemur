@@ -584,8 +584,19 @@ countsPlatingUpdate <- function(input, output, session, usePreset) {
 
 countsPlatingLoadDataset <- function(input, output, session, CountsRateUserInput, CountsStrain1UserInput, CountsStrain2UserInput,
                                      CountsStrain1FoldUserInput, CountsStrain2FoldUserInput, CountsStrain3FoldUserInput,
-                                     CountsStrain4FoldUserInput, CountsStrain5FoldUserInput, CountsStrain6FoldUserInput) {
+                                     CountsStrain4FoldUserInput, CountsStrain5FoldUserInput, CountsStrain6FoldUserInput,
+                                     BatchCalcUserInput) {
   ReactValue <- reactiveValues()
+  
+  observe({
+    updateSelectInput(session = session, inputId = "LoadDataset",
+                      choices = c("-", "Rate-Strain", "Pvalue-Strain1", "Pvalue-Strain2",
+                                  "Fold-Strain1", "Fold-Strain2", "Fold-Strain3",
+                                  "Fold-Strain4", "Fold-Strain5", "Fold-Strain6",
+                                  "Barna-glucose", "Barna-maltose", "Crane-1", "Crane-2", "Demerec", "Foster-1994",
+                                  "Vaisman-2021-1", "Vaisman-2021-2", names(BatchCalcUserInput())))
+  })
+  
   observeEvent(input$LoadDataset, {
     ReactValue$CountsRateUserInput <- CountsRateUserInput()
     ReactValue$CountsStrain1UserInput <- CountsStrain1UserInput()
@@ -596,9 +607,11 @@ countsPlatingLoadDataset <- function(input, output, session, CountsRateUserInput
     ReactValue$CountsStrain4FoldUserInput <- CountsStrain4FoldUserInput()
     ReactValue$CountsStrain5FoldUserInput <- CountsStrain5FoldUserInput()
     ReactValue$CountsStrain6FoldUserInput <- CountsStrain6FoldUserInput()
+    ReactValue$BatchCalcUserInput <- BatchCalcUserInput()
     dataset <- input$LoadDataset
     
     if (!is.null(dataset)) {
+      if (dataset == "-") {return()}
       if (dataset == "Crane-1") {choices <- list("setModel" = FALSE,
                                                  "setSelective" = 1,
                                                  "setNonselective" = 2,
@@ -692,8 +705,8 @@ countsPlatingLoadDataset <- function(input, output, session, CountsRateUserInput
       else if (dataset == "Fold-Strain4") {choices <- ReactValue$CountsStrain4FoldUserInput}
       else if (dataset == "Fold-Strain5") {choices <- ReactValue$CountsStrain5FoldUserInput}
       else if (dataset == "Fold-Strain6") {choices <- ReactValue$CountsStrain6FoldUserInput}
+      else if (!any(is.na(ReactValue$BatchCalcUserInput))) {if (dataset %in% names(ReactValue$BatchCalcUserInput)) {choices <- ReactValue$BatchCalcUserInput[[dataset]]}}
       else {choices <- NULL}
-      
       
       suppressWarnings({
         if (!is.null(choices)) {

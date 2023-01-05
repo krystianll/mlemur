@@ -23,7 +23,8 @@ loadDatasetWrapper <- function(id, rv) {
              CountsStrain3FoldUserInput = reactive(rv$CountsStrain3FoldUserInput()),
              CountsStrain4FoldUserInput = reactive(rv$CountsStrain4FoldUserInput()),
              CountsStrain5FoldUserInput = reactive(rv$CountsStrain5FoldUserInput()),
-             CountsStrain6FoldUserInput = reactive(rv$CountsStrain6FoldUserInput())
+             CountsStrain6FoldUserInput = reactive(rv$CountsStrain6FoldUserInput()),
+             BatchCalcUserInput = reactive(rv$BatchDatasets)
   )
 }
 
@@ -449,6 +450,7 @@ comboValidator <- function(DataPlating, DataSelective, DataNonselective) {
   PlatEffToUnity <- 0
   PvaluePossible <- TRUE
   CVFromCounts <- rep(FALSE, length(DataPlating)-1)
+  NoGoodColumns <- FALSE
   
   parameterNumbers <- list()
   if (length(DataPlating[[1]]) > 0) {
@@ -459,7 +461,7 @@ comboValidator <- function(DataPlating, DataSelective, DataNonselective) {
   
   # Mine parameters from user input
   for (item in items) {
-    parameterNumbers[[item]] <- which(DataPlating[1]==item)
+    parameterNumbers[[item]] <- which(sapply(DataPlating[1], tolower)==tolower(item))
   }
   
   # Checking for unknown parameters
@@ -521,7 +523,7 @@ comboValidator <- function(DataPlating, DataSelective, DataNonselective) {
           if (length(which(DataPlating[1]=="VolumeTotal"))==0) {
             DataPlating <- as.data.frame(rbind(as.matrix(DataPlating), c("VolumeTotal", rep(NA, length(DataPlating[-1])))))
           }
-          DataPlating[which(DataPlating[1]=="VolumeTotal")[1],i] <- paste(softWarningTooltip("Wannot estimate mean culture size because this value is missing. The column will be skipped."), sep=" ")
+          DataPlating[which(DataPlating[1]=="VolumeTotal")[1],i] <- paste(softWarningTooltip("Cannot estimate mean culture size because this value is missing. The column will be skipped."), sep=" ")
           DataMissingNonsel <- DataMissingNonsel + 1
           colsToSkip <- c(colsToSkip, i-1)
         }
@@ -917,9 +919,13 @@ comboValidator <- function(DataPlating, DataSelective, DataNonselective) {
     colnamesToSkip <- vector(mode = "character")
     if (length(colsToSkip) > 0) {
       colsToSkip <- sort(unique(colsToSkip))
-      DataPlating2 <- DataPlating2[,-colsToSkip]
-      DataSelective2 <- DataSelective2[-colsToSkip]
-      DataNonselective2 <- DataNonselective2[-colsToSkip]
+      
+      badCols <- sort(unique(c(colsToSkip, colsWithErrors)))
+      
+      DataPlating2 <- DataPlating2[,-badCols,drop = FALSE]
+      DataSelective2 <- DataSelective2[-badCols]
+      DataNonselective2 <- DataNonselective2[-badCols]
+      if (length(DataPlating2)==0) NoGoodColumns <- TRUE
       
       for (i in colsToSkip) {
         colnames(DataPlating)[i+1] <- paste(colnames(DataPlating)[i+1], softWarningTooltip("This column will be skipped due to missing data."), sep = " ")
@@ -935,9 +941,10 @@ comboValidator <- function(DataPlating, DataSelective, DataNonselective) {
     colsWithErrorsButSkipped <- vector(mode = "numeric")
     if (length(colsWithErrors) > 0) {
       colsWithErrors <- sort(unique(colsWithErrors))
+      
       if (length(colsToSkip) > 0) {
         colsWithErrorsButSkipped <- colsWithErrors[which(colsWithErrors %in% colsToSkip)]
-        colsWithErrors <- colsWithErrors[-which(colsWithErrors %in% colsToSkip)]
+        if (length(which(colsWithErrors %in% colsToSkip)) > 0) colsWithErrors <- colsWithErrors[-which(colsWithErrors %in% colsToSkip)]
       }
       
       colnamesWithErrors <- allnames[colsWithErrors]
@@ -962,6 +969,7 @@ comboValidator <- function(DataPlating, DataSelective, DataNonselective) {
     
     errorList <- paste(ifelse(length(colsWithErrors) > 0, paste("<i class='fa fa-exclamation-triangle' style = 'color:#b94a48'></i> <font color = '#b94a48'><b>Columns", paste(colnamesWithErrors, collapse = ", "), "contain fatal errors that need to be resolved before continuing.</b></font>\n", sep = " "), ""),
                        ifelse(length(colsWithErrorsButSkipped) > 0, paste("<i class='fa fa-exclamation-triangle' style = 'color:#b94a48'></i> Columns", paste(colnamesWithErrorsButSkipped, collapse = ", "), "contain errors but the column was skipped due to missing data.\n", sep = " "), ""),
+                       ifelse(NoGoodColumns, paste("<i class='fa fa-exclamation-triangle' style = 'color:#b94a48'></i> <font color = '#b94a48'><b>It appears there are no usable datasets in your file.</b></font>\n", sep = " "), ""),
                        ifelse(CellNonnumeric != 0, paste(CellNonnumeric, "input(s) in Experiment parameters contain(s) non-numerical characters.\n", sep = " "), ""),
                        ifelse(CellNonpositive != 0, paste(CellNonpositive, "input(s) in Experiment parameters contain(s) values out of bounds.\n", sep = " "), ""),
                        ifelse(ColumnPlatingTooBigNonsel != 0, paste("In", ColumnPlatingTooBigNonsel, "dataset(s) in Counts on non-selective medium, plating efficiency is bigger than 1.\n", sep = " "), ""),

@@ -1,6 +1,7 @@
 mlemurServer <- function(input, output, session) {
   rv <- reactiveValues()
   rv$BatchFirstRun <- FALSE
+  rv$BatchDatasets <- NA
   
   #### Rate Validate Data ####
   rv$SettingsRateUserInput <- callModule(settingsPlating, id = "SettingsRate")
@@ -526,8 +527,7 @@ mlemurServer <- function(input, output, session) {
       rv$DataPlatingForCalc <- validation[[4]]
       rv$DataSelectiveForCalc <- validation[[5]]
       rv$DataNonselectiveForCalc <- validation[[6]]
-      rv$InitialSettings <- t(apply(as.matrix(rv$DataPlatingForCalc)[c(2,3,4,5,6,13),], MARGIN=c(1,2), FUN = function(x) {if (isTruthy(x)) {x>0} else FALSE}))
-      
+      rv$InitialSettings <- t(apply(as.matrix(rv$DataPlatingForCalc)[c(2,3,4,5,6,13),,drop = FALSE], MARGIN=c(1,2), FUN = function(x) {if (isTruthy(x)) {x>0} else FALSE}))
       warningList <- validation[[7]]
       errorList <- validation[[8]]
       
@@ -538,17 +538,21 @@ mlemurServer <- function(input, output, session) {
       
       if (warningList != "" & errorList != "") {
         output$batchInfo <- renderText({paste("<p class=\"text-danger\">There are problems with your data that need to be resolved. Look for <i class='fa fa-exclamation-triangle' style = 'color:#b94a48'></i> red triangles for more details:</p>", errorList, "\n",
-                                              "<p>Additionally, mlemur has generated the following non-error informations and warnings:</p>", warningList, sep = "")})
+                                              "<p>Additionally, mlemur has generated the following non-error informations and warnings:</p>", warningList, 
+                                              "<p class=\"text-success\">Valid datasets, if any, were added to the Load dataset menu in tabs: Rate, <i>P</i> value, Fold.</p>", sep = "")})
         shinyjs::hide("ifDataCorrect")
       } else if (errorList != "") {
-        output$batchInfo <- renderText({paste("<p class=\"text-danger\">There are problems with your data that need to be resolved. Look for red triangles for more details:</p>", errorList, sep = "")})
+        output$batchInfo <- renderText({paste("<p class=\"text-danger\">There are problems with your data that need to be resolved. Look for red triangles for more details:</p>", errorList,  
+                                              "<p class=\"text-success\">Valid datasets, if any, were added to the Load dataset menu in tabs: Rate, <i>P</i> value, Fold.</p>", sep = "")})
         shinyjs::hide("ifDataCorrect")
       } else {
         if (warningList != "") {
           output$batchInfo <- renderText({paste("<p class=\"text-success\">Your data appears to be OK.</p>", "\n",
-                                                "<p>Additionally, mlemur has generated the following non-error informations and warnings:</p>", warningList, sep = "")})
+                                                "<p>Additionally, mlemur has generated the following non-error informations and warnings:</p>", warningList,  
+                                                "<p class=\"text-success\">Valid datasets, if any, were added to the Load dataset menu in tabs: Rate, <i>P</i> value, Fold.</p>", sep = "")})
         } else {
-          output$batchInfo <- renderText({paste("<p class=\"text-success\">Your data appears to be OK.</p>")})
+          output$batchInfo <- renderText({paste("<p class=\"text-success\">Your data appears to be OK.</p>",
+                                                "<p class=\"text-success\">Valid datasets, if any, were added to the Load dataset menu in tabs: Rate, <i>P</i> value, Fold.</p>", sep = "")})
         }
         shinyjs::show("ifDataCorrect")
         
@@ -616,6 +620,21 @@ mlemurServer <- function(input, output, session) {
         }
       }
       
+      rv$PlatingList <- rv$DataPlatingForCalc
+      rv$PlatingList <- lapply(rv$PlatingList, as.list)
+      for (item in colnames(rv$DataPlatingForCalc)) {
+        eval(parse(text = paste("names(rv$PlatingList$`", item, "`) <- rownames(rv$DataPlatingForCalc)", sep = "")))
+        eval(parse(text = paste("rv$PlatingList$`", item, "`$CountsSelective <- rv$DataSelectiveForCalc$`", item, "`", sep = "")))
+        eval(parse(text = paste("rv$PlatingList$`", item, "`$CountsNonselective <- rv$DataNonselectiveForCalc$`", item, "`", sep = "")))
+        eval(parse(text = paste("rv$PlatingList$`", item, "`$model <- TRUE", sep = "")))
+        eval(parse(text = paste("rv$PlatingList$`", item, "`$setSel <- ifelse(is.na(rv$PlatingList$`", item, "`$PlatingEfficiency), 1, 2)", sep = "")))
+        eval(parse(text = paste("rv$PlatingList$`", item, "`$setNsel <- ifelse(is.na(rv$PlatingList$`", item, "`$MeanCells), 1, 2)", sep = "")))
+        eval(parse(text = paste("if (rv$InitialSettings['", item, "','Lag']) {rv$PlatingList$`", item, "`$useLagFitness <- 1} else if (rv$InitialSettings['", item, "','Fitness']) {rv$PlatingList$`", item, "`$useLagFitness <- 2} else {rv$PlatingList$`", item, "`$useLagFitness <- 0}", sep = "")))
+        eval(parse(text = paste("rv$PlatingList$`", item, "`$setCV <- 1", sep = "")))
+      }
+      rv$BatchDatasets <- rv$PlatingList
+      names(rv$BatchDatasets) <- as.vector(sapply(names(rv$BatchDatasets), function(x) paste("Batch-", x, sep="")))
+
       shinyjs::show("onDataChecked")
       
     } else {
@@ -767,16 +786,6 @@ mlemurServer <- function(input, output, session) {
   #### BatchCalc calculations ####
   observeEvent(input$calculate4, {
 
-    rv$PlatingList <- rv$DataPlatingForCalc
-    rv$PlatingList <- lapply(rv$PlatingList, as.list)
-    for (item in colnames(rv$DataPlatingForCalc)) {
-      eval(parse(text = paste("names(rv$PlatingList$`", item, "`) <- rownames(rv$DataPlatingForCalc)", sep = "")))
-      eval(parse(text = paste("rv$PlatingList$`", item, "`$CountsSelective <- rv$DataSelectiveForCalc$`", item, "`", sep = "")))
-      eval(parse(text = paste("rv$PlatingList$`", item, "`$CountsNonselective <- rv$DataNonselectiveForCalc$`", item, "`", sep = "")))
-      eval(parse(text = paste("rv$PlatingList$`", item, "`$model <- TRUE", sep = "")))
-      eval(parse(text = paste("rv$PlatingList$`", item, "`$setCV <- !rv$CVFromCounts[which(colnames(rv$DataPlatingForCalc)=='", item, "')]", sep = "")))
-    }
-    
     rv$FinalSettings <- rv$InitialSettings
     for (i in 1:nrow(rv$InitialSettings)) {
       for (item in colnames(rv$InitialSettings)) {
@@ -803,6 +812,7 @@ mlemurServer <- function(input, output, session) {
       yarg <- unlist(sapply(2:table.length, function(x) x:table.length))
       
       proxy <- mapply(function(x,y) {calc.pval.int(rv$PlatingList[[x]], rv$PlatingList[[y]], NoOfMutations[[x]], NoOfMutations[[y]])}, x = xarg, y = yarg)
+
       DataPvalue <- matrix(NA,nrow=table.length,ncol=table.length,dimnames = list(names(DataRate),names(DataRate)))
       DataPvalue[lower.tri(DataPvalue)] <- proxy
       
@@ -826,6 +836,7 @@ mlemurServer <- function(input, output, session) {
       shinyjs::show("BatchPvalue")
     } else {
       shinyjs::hide("BatchPvalue")
+      shinyjs::hide("BatchEffSize")
       rv$PvalueOutput <- NULL
     }
     
