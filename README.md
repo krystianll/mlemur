@@ -12,7 +12,7 @@
 
 3. In the R main window, install required packages: copy the following command to R console and press Enter:
 ```
-install.packages(c("devtools", "Rcpp", "reactable", "readxl", "writexl", "shiny", "shinyFeedback", "shinyWidgets", "shinyjs", "boot", "BH", "hypergeo", "Ryacas"), dependencies = TRUE)
+install.packages(c("devtools", "Rcpp", "reactable", "readxl", "writexl", "shiny", "shinyFeedback", "shinyWidgets", "shinyjqui", "shinyjs", "boot", "BH", "hypergeo", "Ryacas"), dependencies = TRUE)
 ```
 You might be asked to confirm by clicking 'Yes' or to select server from which the packages will be downloaded - select the first one
 
@@ -69,7 +69,7 @@ Then follow the instructions in the new window.
 
 3. In the R main window, install required packages: copy the following command to R console and press Enter:
 ```
-install.packages(c("devtools", "Rcpp", "reactable", "readxl", "writexl", "shiny", "shinyFeedback", "shinyWidgets", "shinyjs", "boot", "BH", "hypergeo", "Ryacas"), dependencies = TRUE)
+install.packages(c("devtools", "Rcpp", "reactable", "readxl", "writexl", "shiny", "shinyFeedback", "shinyWidgets", "shinyjqui", "shinyjs", "boot", "BH", "hypergeo", "Ryacas"), dependencies = TRUE)
 ```
 You might be asked to confirm by clicking "Yes" or to select server from which the packages will be downloaded - select the first one
 
