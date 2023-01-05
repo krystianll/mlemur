@@ -30,7 +30,7 @@ You might be asked to confirm by clicking 'Yes' or to select server from which t
 
 3. Install mlemur with all dependencies using the following command:
 ```
-devtools::install_github("krystianll/mlemur", ref = "master", auth_token = "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", dependencies = TRUE)
+devtools::install_github("krystianll/mlemur", ref = "master", dependencies = TRUE)
 ```
 ### Running mlemur
 Mlemur can be run in both text and graphical mode. The graphical mode is initiated in a browser window.
@@ -109,7 +109,7 @@ You might be asked to confirm by clicking 'Yes' or to select server from which t
 
 7. Install mlemur with all dependencies using the following command:
 ```
-devtools::install_github("krystianll/mlemur", ref = "master", auth_token = "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", dependencies = TRUE)
+devtools::install_github("krystianll/mlemur", ref = "master", dependencies = TRUE)
 ```
 ### Running mlemur
 Mlemur can be run in both text and graphical mode. The graphical mode is initiated in a browser window.
