@@ -40,9 +40,9 @@ mle.fold(
 
 \item{fun}{describes the function of mutation rates for which confidence intervals should be calculated. Must be a character
 vector of length 1 containing either one of default options ("fold X1/X2", "subtraction X1-X2",
-"double fold (X1/X2)/(X3/X4)", "background subtraction fold (X1-X2)/(X3-X2)") or a user-defined function containing
-phrases X1, X2, X3, X4, X5, X6, which denote mutation rates for Strain 1, Strain 2, ... . Only addition +, subtraction -,
-multiplication *, and division /, are currently supported.}
+"double fold (X1/X2)/(X3/X4)", "background subtraction fold (X1-X2)/(X3-X2)"), "additivity (X1+X2)/X3", or a user-defined
+function containing phrases X1, X2, X3, X4, X5, X6, which denote mutation rates for Strain 1, Strain 2, ... .
+Only addition +, subtraction -, multiplication *, and division /, are currently supported.}
 
 \item{ci.level}{confidence interval size, default 0.95.}
 
@@ -56,8 +56,8 @@ function of mutation rates as well as lower and upper profile likelihood confide
 \description{
 Inspired by Zheng 2021, this function calculates MLE and profile likelihood confidence intervals
 of an arbitrary function of data, such as fold (X1/X2), subtraction (X1-X2), fold with background
-subtraction ((X1-X2)/(X3-X2)), or a user-defined function utilising basic mathematical operations: addition,
-subtraction, multiplication or division. Up to 6 datasets can be used.
+subtraction ((X1-X2)/(X3-X2)), test of additivity ((X1+X2)/X3), or a user-defined function
+utilising basic mathematical operations: addition, subtraction, multiplication or division. Up to 6 datasets can be used.
 }
 \examples{
 mle.fold(list(c(26, 9, 16, 34, 15, 25, 77, 13, 14, 19), c(67, 12, 112, 24,
