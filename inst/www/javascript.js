@@ -7,25 +7,6 @@ $(document).ready(function () {
     $("label").each(function () {
       	$(this).html($(this).html().replaceAll("&lt;", "<").replaceAll("&gt;", ">"));
     });
-      
-	$('.moveTo').click(function (event) {
-		var tab = $(this).attr('href');
-		$('#helptabs').find('a[href="'+tab+'"]').click()
-	});
-      
-	$('.moveToRef').click(function (event) {
-   		var ref = $(this).attr('href');
-       	$('#helptabs').find('a[href="'+"#refs"+'"]').click();
-       	$(ref).css("background-color", "#E4F1EF").fadeIn("slow");
-		window.setTimeout(function() {
-       		/*$(ref).removeAttr('style');*/
-       		$(ref).css("background-color", "").fadeIn("slow");
-   		}, 1000);
-   	});
-   	
-    $('.gallery_pics').click(function(e) {
-    	$(this).toggleClass('fullscreen');
-  	});
   	
   	document.getElementById("CountsRate-setCV2").parentNode.appendChild(document.getElementById("CountsRate-CV"));
   	document.getElementById("CountsRate-CV").style.cssText+="display: inline-block; width: auto;";
@@ -33,11 +14,9 @@ $(document).ready(function () {
   	
   	document.getElementById("CountsStrain1-setCV2").parentNode.appendChild(document.getElementById("CountsStrain1-CV"));
   	document.getElementById("CountsStrain1-CV").style.cssText+="display: inline-block; width: auto;";
-  	/*document.getElementById("CountsStrain1-setCV2").nextElementSibling.style.cssText+="top:9px;";*/
   	
   	document.getElementById("CountsStrain2-setCV2").parentNode.appendChild(document.getElementById("CountsStrain2-CV"));
   	document.getElementById("CountsStrain2-CV").style.cssText+="display: inline-block; width: auto;";
-  	/*document.getElementById("CountsStrain2-setCV2").nextElementSibling.style.cssText+="top:9px;";*/
       
 });
 
@@ -73,7 +52,6 @@ function FoldHideFeedback() {
 	eq.style.border = '1px solid #cccccc';
 	
 	document.getElementById("FoldEquation-label").style.color = '';
-// 	eq.style.paddingRight = '';
 
 };
 
@@ -111,7 +89,6 @@ function FoldShowFeedback(text) {
 	eq.parentElement.appendChild(el3);
 	
 	eq.style.border = '1px solid rgb(185, 74, 72)';
-// 	eq.style.paddingRight = '47.5px';
 
 };
 
