@@ -31,6 +31,7 @@ std::vector<int> r_birth_and_death(int n, double beta, double delta, double t){
   return res;
 }
 
+// derived from rSalvador by Qi Zheng
 // [[Rcpp::export]]
 Rcpp::List rluria_list(const int n=10, const double rate=1e-8, const double N0=1, const double Nt=1e9, const double mut_fit=1.0,
                        const double death_prob = 0, const double lag=0, const double e=1, const double cv=0, const int trim=0) {
@@ -107,6 +108,7 @@ Rcpp::List rluria_list(const int n=10, const double rate=1e-8, const double N0=1
   return Rcpp::List::create(_["mc"] = res, _["nt"] = Nts);
 }
 
+// derived from rSalvador by Qi Zheng
 // [[Rcpp::export]]
 NumericVector rluria_vec(const int n=10, const double rate=1e-8, const double N0=1, const double Nt=1e9, const double mut_fit=1.0,
                          const double death_prob = 0, const double lag=0, const double e=1, const double cv=0, const int trim=0) {
@@ -318,6 +320,7 @@ std::vector<mpfr_20> aux_seq_boost(mpfr_20 e, mpfr_20 w, int n) {
   return(hSeq);
 }
 
+// partially derived from rSalvador by Qi Zheng
 // [[Rcpp::export]]
 std::vector<double> aux_seq(double e, double w, int n, int option=0) {
   // NumericVector aux_seq(double e, double w, int n, int option) {
@@ -697,6 +700,7 @@ std::vector<double> aux_seq_death_ext(double e, double w, double d, int n, bool 
 
 /// PMF FOR LURIA-DELBRUCK APPROXIMATE DISTRIBUTION ///
 
+// derived from rSalvador by Qi Zheng
 // [[Rcpp::export]]
 std::vector<double> prob_ld(const double m, std::vector<double> &seq, const int len){
   int n,j;
@@ -717,6 +721,7 @@ std::vector<double> prob_ld(const double m, std::vector<double> &seq, const int 
   return prob;
 }
 
+// derived from rSalvador by Qi Zheng
 // not exported
 std::vector<mpfr_20> prob_ld(const mpfr_20 m, std::vector<double> &seq, const int len){
   int n,j;
@@ -737,6 +742,7 @@ std::vector<mpfr_20> prob_ld(const mpfr_20 m, std::vector<double> &seq, const in
   return prob;
 }
 
+// derived from rSalvador by Qi Zheng
 // not exported
 std::vector<mpfr_20> prob_ld(const mpfr_20 m, std::vector<mpfr_20> &seq, const int len){
   int n,j;
@@ -757,6 +763,7 @@ std::vector<mpfr_20> prob_ld(const mpfr_20 m, std::vector<mpfr_20> &seq, const i
   return prob;
 }
 
+// derived from rSalvador by Qi Zheng
 // not exported
 std::vector<double> prob_ld_deriv(std::vector<double> &seq, std::vector<double> &prob, const int len){
   int n,j;
@@ -775,6 +782,7 @@ std::vector<double> prob_ld_deriv(std::vector<double> &seq, std::vector<double> 
   return prob_deriv;
 }
 
+// derived from rSalvador by Qi Zheng
 // not exported
 std::vector<mpfr_20> prob_ld_deriv(std::vector<mpfr_20> &seq, std::vector<double> &prob, const int len){
   int n,j;
@@ -793,6 +801,7 @@ std::vector<mpfr_20> prob_ld_deriv(std::vector<mpfr_20> &seq, std::vector<double
   return prob_deriv;
 }
 
+// derived from rSalvador by Qi Zheng
 // not exported
 std::vector<mpfr_20> prob_ld_deriv(std::vector<double> &seq, std::vector<mpfr_20> &prob, const int len){
   int n,j;
@@ -811,6 +820,7 @@ std::vector<mpfr_20> prob_ld_deriv(std::vector<double> &seq, std::vector<mpfr_20
   return prob_deriv;
 }
 
+// derived from rSalvador by Qi Zheng
 // not exported
 std::vector<mpfr_20> prob_ld_deriv(std::vector<mpfr_20> &seq, std::vector<mpfr_20> &prob, const int len){
   int n,j;
@@ -831,6 +841,7 @@ std::vector<mpfr_20> prob_ld_deriv(std::vector<mpfr_20> &seq, std::vector<mpfr_2
 
 /// PMF FOR LURIA-DELBRUCK & GAMMA MIXTURE DISTRIBUTION ///
 
+// derived from rSalvador by Qi Zheng
 // [[Rcpp::export]]
 std::vector<double> xi_seq(const double A, std::vector<double> &seq, const int len){
   int n,j;
@@ -852,6 +863,7 @@ std::vector<double> xi_seq(const double A, std::vector<double> &seq, const int l
   return xi;
 }
 
+// derived from rSalvador by Qi Zheng
 // not exported
 std::vector<mpfr_20> xi_seq(const mpfr_20 A, std::vector<double> &seq, const int len){
   int n,j;
@@ -873,6 +885,7 @@ std::vector<mpfr_20> xi_seq(const mpfr_20 A, std::vector<double> &seq, const int
   return xi;
 }
 
+// derived from rSalvador by Qi Zheng
 // [[Rcpp::export]]
 std::vector<double> prob_b0(const double A, const double k, const double seq0, std::vector<double> &xi, const int len){
   int n,j;
@@ -893,6 +906,7 @@ std::vector<double> prob_b0(const double A, const double k, const double seq0, s
   return prob;
 }
 
+// derived from rSalvador by Qi Zheng
 // not exported
 std::vector<mpfr_20> prob_b0(const mpfr_20 A, const mpfr_20 k, const mpfr_20 seq0, std::vector<mpfr_20> &xi, const int len){
   int n,j;
@@ -913,6 +927,7 @@ std::vector<mpfr_20> prob_b0(const mpfr_20 A, const mpfr_20 k, const mpfr_20 seq
   return prob;
 }
 
+// derived from rSalvador by Qi Zheng
 // not exported
 std::vector<double> prob_b0_deriv1(const double A, const double k, std::vector<double> &seq, std::vector<double> &xi, const int len){
   int n,j;
@@ -934,6 +949,7 @@ std::vector<double> prob_b0_deriv1(const double A, const double k, std::vector<d
   return prob1;
 }
 
+// derived from rSalvador by Qi Zheng
 // not exported
 std::vector<mpfr_20> prob_b0_deriv1(const mpfr_20 A, const mpfr_20 k, std::vector<double> &seq, std::vector<mpfr_20> &xi, const int len){
   int n,j;
@@ -955,6 +971,7 @@ std::vector<mpfr_20> prob_b0_deriv1(const mpfr_20 A, const mpfr_20 k, std::vecto
   return prob1;
 }
 
+// derived from rSalvador by Qi Zheng
 // not exported
 std::vector<double> prob_b0_deriv2(const double A, const double k, std::vector<double> &seq, std::vector<double> &xi, const int len){
   int n,j;
@@ -984,6 +1001,7 @@ std::vector<double> prob_b0_deriv2(const double A, const double k, std::vector<d
   return prob2;
 }
 
+// derived from rSalvador by Qi Zheng
 // not exported
 std::vector<mpfr_20> prob_b0_deriv2(const mpfr_20 A, const mpfr_20 k, std::vector<double> &seq, std::vector<mpfr_20> &xi, const int len){
   int n,j;
@@ -1230,6 +1248,7 @@ double logprob_boost(double xm, int len, std::vector<int>& data, std::vector<dou
 
 /// HELPER FUNCTIONS FOR ONE-PARAMETER ESTIMATES ///
 
+// derived from rSalvador by Qi Zheng
 void derivatives(double &U, double &J, double &loglik, const double &m, std::vector<double> &seq, const int &len, std::vector<int> &data, const double &k, const double &poisson, const bool &fisher=true){
   int i,number;
   int samplesize=data.size();
@@ -1282,6 +1301,7 @@ void derivatives(double &U, double &J, double &loglik, const double &m, std::vec
   };
 }
 
+// derived from rSalvador by Qi Zheng
 void derivatives_boost(double &U, double &J, double &loglik, const double &m, std::vector<double> &seq, const int &len, std::vector<int> &data, const double &k, const double &poisson, const bool &fisher=true){
   int i,number;
   int samplesize=data.size();
@@ -1337,6 +1357,7 @@ void derivatives_boost(double &U, double &J, double &loglik, const double &m, st
   loglik=static_cast<double>(xloglik);
 }
 
+// derived from rSalvador by Qi Zheng
 void loglik(double &loglik, const double &m, std::vector<double> &seq, const int &len, std::vector<int> &data, const double &k, const double &poisson){
   int i,number;
   int samplesize=data.size();
@@ -1373,6 +1394,7 @@ void loglik(double &loglik, const double &m, std::vector<double> &seq, const int
   };
 }
 
+// derived from rSalvador by Qi Zheng
 void loglik_boost(double &loglik, const double &m, std::vector<double> &seq, const int &len, std::vector<int> &data, const double &k, const double &poisson){
   int i,number;
   int samplesize=data.size();
@@ -1411,6 +1433,7 @@ void loglik_boost(double &loglik, const double &m, std::vector<double> &seq, con
   loglik=static_cast<double>(xloglik);
 }
 
+// inspired by rSalvador by Qi Zheng
 // [[Rcpp::export]]
 std::vector<double> optim_m(double current_m, double lower_m, double upper_m, std::vector<double> &seq, const int &len, std::vector<int> &data, const double &k, const double &poisson, bool verbose=false){
   int iter=0;
@@ -1503,6 +1526,7 @@ std::vector<double> optim_m(double current_m, double lower_m, double upper_m, st
   return std::vector<double>{current_m, current_U, current_J, current_loglik};
 }
 
+// inspired by rSalvador by Qi Zheng
 // [[Rcpp::export]]
 double root_m(double current_m, double lower_m, double upper_m, std::vector<double> &seq, const int &len, std::vector<int> &data, const double &k, const double &poisson, const double lalpha, bool verbose=false){
   int iter=0;
@@ -1601,6 +1625,7 @@ double root_m(double current_m, double lower_m, double upper_m, std::vector<doub
   return current_m;
 }
 
+// inspired by rSalvador by Qi Zheng
 // [[Rcpp::export]]
 std::vector<double> combo_optim_m(double current_m, double lower_m, double upper_m, const double &R, std::vector<double> &seq1, std::vector<double> &seq2,
                                   const int &len1, const int &len2, std::vector<int> &data1, std::vector<int> &data2,
