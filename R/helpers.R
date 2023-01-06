@@ -12,9 +12,10 @@ numerise <- function(x) {
 }
 
 # Input updater
-loadDatasetWrapper <- function(id, rv) {
+loadDatasetWrapper <- function(id, rv, SettingsPlatingID) {
   callModule(countsPlatingLoadDataset,
              id = id,
+             SettingsPlatingID = SettingsPlatingID,
              CountsRateUserInput = reactive(rv$CountsRateUserInput()),
              CountsStrain1UserInput = reactive(rv$CountsStrain1UserInput()),
              CountsStrain2UserInput = reactive(rv$CountsStrain2UserInput()),
@@ -78,7 +79,7 @@ ValueValidator <- function(x) {
 NonNegValueValidator <- function(x) {
   info <- paste("")
   if (length(x) == 0) {
-    info <- paste("Please provide a positive value.\n")
+    info <- paste("Please provide a non-negative value.\n")
   }
   else if (is.na(x) == TRUE) {
     info <- paste("Non-numeric characters (letters, commas, colons, etc.) are not allowed.\n")
@@ -108,7 +109,7 @@ PosValueValidator <- function(x) {
 DeathValidator <- function(x) {
   info <- paste("")
   if (length(x) == 0) {
-    info <- paste("Please provide a positive value.\n")
+    info <- paste("Please provide a non-negative value.\n")
   }
   else if (is.na(x) == TRUE) {
     info <- paste("Non-numeric characters (letters, commas, colons, etc.) are not allowed.\n")

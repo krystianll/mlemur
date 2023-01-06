@@ -6,7 +6,7 @@ mlemurServer <- function(input, output, session) {
   #### Rate Validate Data ####
   rv$SettingsRateUserInput <- callModule(settingsPlating, id = "SettingsRate")
   rv$CountsRateUserInput <- callModule(countsPlating, id = "CountsRate", userSettings=reactive(rv$SettingsRateUserInput()), stack_cols=FALSE)
-  loadDatasetWrapper("CountsRate", rv = rv)
+  loadDatasetWrapper("CountsRate", rv = rv, SettingsPlatingID = "SettingsRate")
   
   #### Rate Calculate ####
   observeEvent(input$calculate, {
@@ -79,8 +79,8 @@ mlemurServer <- function(input, output, session) {
   rv$SettingsPvalUserInput <- callModule(settingsPlating, id = "SettingsPval")
   rv$CountsStrain1UserInput <- callModule(countsPlating, id = "CountsStrain1", userSettings=reactive(rv$SettingsPvalUserInput()), stack_cols=TRUE)
   rv$CountsStrain2UserInput <- callModule(countsPlating, id = "CountsStrain2", userSettings=reactive(rv$SettingsPvalUserInput()), stack_cols=TRUE)
-  loadDatasetWrapper("CountsStrain1", rv = rv)
-  loadDatasetWrapper("CountsStrain2", rv = rv)
+  loadDatasetWrapper("CountsStrain1", rv = rv, SettingsPlatingID = "SettingsPval")
+  loadDatasetWrapper("CountsStrain2", rv = rv, SettingsPlatingID = "SettingsPval")
   
   #### P value Calculate ####
   observeEvent(input$calculate2, {
@@ -224,15 +224,15 @@ mlemurServer <- function(input, output, session) {
   rv$CountsStrain4FoldUserInput <- callModule(countsPlating, id = "CountsStrain4Fold", userSettings=reactive(rv$SettingsFoldUserInput()), stack_cols=TRUE)
   rv$CountsStrain5FoldUserInput <- callModule(countsPlating, id = "CountsStrain5Fold", userSettings=reactive(rv$SettingsFoldUserInput()), stack_cols=TRUE)
   rv$CountsStrain6FoldUserInput <- callModule(countsPlating, id = "CountsStrain6Fold", userSettings=reactive(rv$SettingsFoldUserInput()), stack_cols=TRUE)
-  loadDatasetWrapper("CountsStrain1Fold", rv = rv)
-  loadDatasetWrapper("CountsStrain2Fold", rv = rv)
-  loadDatasetWrapper("CountsStrain3Fold", rv = rv)
-  loadDatasetWrapper("CountsStrain4Fold", rv = rv)
-  loadDatasetWrapper("CountsStrain5Fold", rv = rv)
-  loadDatasetWrapper("CountsStrain6Fold", rv = rv)
+  loadDatasetWrapper("CountsStrain1Fold", rv = rv, SettingsPlatingID = "SettingsFold")
+  loadDatasetWrapper("CountsStrain2Fold", rv = rv, SettingsPlatingID = "SettingsFold")
+  loadDatasetWrapper("CountsStrain3Fold", rv = rv, SettingsPlatingID = "SettingsFold")
+  loadDatasetWrapper("CountsStrain4Fold", rv = rv, SettingsPlatingID = "SettingsFold")
+  loadDatasetWrapper("CountsStrain5Fold", rv = rv, SettingsPlatingID = "SettingsFold")
+  loadDatasetWrapper("CountsStrain6Fold", rv = rv, SettingsPlatingID = "SettingsFold")
   
   observe({
-    if (!paste(input$FoldEquation, collapse = "") %in% c("Strain 1/Strain 2", "Strain 1-Strain 2", "(Strain 1/Strain 2)/(Strain 3/Strain 4)", "(Strain 1-Strain 3)/(Strain 2-Strain 3)")) updateSelectInput(inputId = "FoldUsePreset", selected = 0)
+    if (!paste(input$FoldEquation, collapse = "") %in% c("Strain 1/Strain 2", "Strain 1-Strain 2", "(Strain 1/Strain 2)/(Strain 3/Strain 4)", "(Strain 1-Strain 3)/(Strain 2-Strain 3)", "(Strain 1+Strain 2)/Strain 3")) updateSelectInput(inputId = "FoldUsePreset", selected = 0)
     rv$FoldEquationVector <- gsub(pattern = "Strain ", replacement = "X", x = input$FoldEquation)
     rv$FoldEquationText <- paste(rv$FoldEquationVector, collapse = "")
     rv$FoldEquationState <- tryCatch((function(X1, X2, X3, X4, X5, X6){eval(parse(text=rv$FoldEquationText))})(1,2,3,4,5,6), error = function(e) NA)
@@ -256,6 +256,8 @@ mlemurServer <- function(input, output, session) {
       shinyjqui::updateOrderInput(session = session, inputId = "FoldEquation", item_class = "danger", items = c("(", "Strain 1", "/", "Strain 2", ")", "/", "(", "Strain 3", "/", "Strain 4", ")"))
     } else if (input$FoldUsePreset == 4) {
       shinyjqui::updateOrderInput(session = session, inputId = "FoldEquation", item_class = "danger", items = c("(", "Strain 1", "-", "Strain 3", ")", "/", "(", "Strain 2", "-", "Strain 3", ")"))
+    } else if (input$FoldUsePreset == 5) {
+      shinyjqui::updateOrderInput(session = session, inputId = "FoldEquation", item_class = "danger", items = c("(", "Strain 1", "+", "Strain 2", ")", "/", "Strain 3"))
     }
   })
   
@@ -634,7 +636,11 @@ mlemurServer <- function(input, output, session) {
       }
       rv$BatchDatasets <- rv$PlatingList
       names(rv$BatchDatasets) <- as.vector(sapply(names(rv$BatchDatasets), function(x) paste("Batch-", x, sep="")))
-
+      
+      for (item in colnames(rv$DataPlatingForCalc)) {
+        eval(parse(text = paste("rv$PlatingList$`", item, "`$setCV <- !rv$CVFromCounts[which(colnames(rv$DataPlatingForCalc)=='", item, "')]", sep = "")))
+      }
+      
       shinyjs::show("onDataChecked")
       
     } else {
@@ -792,10 +798,11 @@ mlemurServer <- function(input, output, session) {
         rv$FinalSettings[i,item] <- input[[paste("choices", gsub(pattern = " ", replacement = "_", rownames(rv$InitialSettings)[i]), item, sep = "_")]]
       }
     }
-    rv$PlatingList <- removeParameters(rv$PlatingList, rv$FinalSettings)
+    rv$PlatingListCopy <- rv$PlatingList
+    rv$PlatingListCopy <- removeParameters(rv$PlatingListCopy, rv$FinalSettings)
     
-    DataRate <- lapply(rv$PlatingList, calc.rate.int)
-    filetosave <- rv$PlatingList
+    DataRate <- lapply(rv$PlatingListCopy, calc.rate.int)
+    filetosave <- rv$PlatingListCopy
     save(filetosave, file = "latest.RData")
     NoOfMutations <- as.numeric(lapply(DataRate, function(x) {x[15]}))
     DataRate <- as.data.frame(lapply(DataRate, function(x) {x[-15]}), check.names = FALSE)

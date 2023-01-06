@@ -186,6 +186,7 @@ aux.seq <- function(e = 1, w = 1, death = 0, lag = 0, phi = 0, n = 10, integrate
   }
 }
 
+# derived from rSalvador by Qi Zheng
 #' Estimate m using p0 method
 #'
 #' @param data a vector of integer-valued colony counts.
@@ -320,6 +321,7 @@ drake.formula <- function(data, e=1, w=1, poisson=0, lag=0, death=0) {
   }
 }
 
+# derived from rSalvador by Qi Zheng
 #' Estimate m using Jones method of the median
 #'
 #' @description The algorithm comes from rSalvador (jones.median.plating). It is included for the sake of
@@ -412,6 +414,7 @@ m_guess <- function(data, e=1, w=1, lag=0, death=0, poisson=0) {
   return(as.vector(na.exclude(m)))
 }
 
+# inspired by rSalvador by Qi Zheng
 #' Estimate m using Maximum Likelihood Method and calculate 95 percent CI using inverted Likelihood Ratio Test
 #' 
 #' @description This function finds Maximum Likelihood Estimate of m, the average number of mutations in culture.
@@ -503,6 +506,7 @@ mle.mutations <- function(data, e=1, w=1, lag=0, poisson=0, death=0, phi=0, cv=0
   }
 }
 
+# inspired by rSalvador by Qi Zheng
 #' Calculate p-values using Likelihood Ratio Test
 #' 
 #' @description This function calculates LRT-based p-values to assess the statistical significance of the
@@ -821,8 +825,8 @@ lrt.rate <- function(data1, data2, e1=1, e2=1, w1=1, w2=1, lag1=0, lag2=0, poiss
 #'
 #' @description Inspired by Zheng 2021, this function calculates MLE and profile likelihood confidence intervals
 #' of an arbitrary function of data, such as fold (X1/X2), subtraction (X1-X2), fold with background
-#' subtraction ((X1-X2)/(X3-X2)), or a user-defined function utilising basic mathematical operations: addition,
-#' subtraction, multiplication or division. Up to 6 datasets can be used.
+#' subtraction ((X1-X2)/(X3-X2)), test of additivity ((X1+X2)/X3), or a user-defined function
+#' utilising basic mathematical operations: addition, subtraction, multiplication or division. Up to 6 datasets can be used.
 #' @param data a list of length 2 to 6 containing numeric vectors with colony counts.
 #' @param e a list or vector of length 2 to 6 (same as data) containing respective values of plating efficiency.
 #' @param w a list or vector of length 2 to 6 (same as data) containing respective values of relative mutant fitness.
@@ -834,9 +838,9 @@ lrt.rate <- function(data1, data2, e1=1, e2=1, w1=1, w2=1, lag1=0, lag2=0, poiss
 #' @param Nt a list or vector of length 2 to 6 (same as data) containing respective values of average number of cells in culture.
 #' @param fun describes the function of mutation rates for which confidence intervals should be calculated. Must be a character
 #' vector of length 1 containing either one of default options ("fold X1/X2", "subtraction X1-X2",
-#' "double fold (X1/X2)/(X3/X4)", "background subtraction fold (X1-X2)/(X3-X2)") or a user-defined function containing
-#' phrases X1, X2, X3, X4, X5, X6, which denote mutation rates for Strain 1, Strain 2, ... . Only addition +, subtraction -,
-#' multiplication *, and division /, are currently supported.
+#' "double fold (X1/X2)/(X3/X4)", "background subtraction fold (X1-X2)/(X3-X2)"), "additivity (X1+X2)/X3", or a user-defined
+#' function containing phrases X1, X2, X3, X4, X5, X6, which denote mutation rates for Strain 1, Strain 2, ... .
+#' Only addition +, subtraction -, multiplication *, and division /, are currently supported.
 #' @param ci.level confidence interval size, default 0.95.
 #' @param verbose if TRUE, mlemur will print messages to the console.
 #' @return a list containing two elements: "fun", a vector of length 3 containg MLE of an arbitrary
@@ -860,11 +864,12 @@ mle.fold <- function(data, e=NULL, w=NULL, lag=NULL, poisson=NULL, death=NULL, p
   
   # checking if fold function is correct
   if (verbose) message("Checking function")
-  fun <- tryCatch(match.arg(fun, c("fold X1/X2", "substraction X1-X2", "double fold (X1/X2)/(X3/X4)", "background substraction fold (X1-X2)/(X3-X2)")), error = function(err) fun)
+  fun <- tryCatch(match.arg(fun, c("fold X1/X2", "substraction X1-X2", "double fold (X1/X2)/(X3/X4)", "background substraction fold (X1-X2)/(X3-X2)", "additivity (X1+X2)/X3")), error = function(err) fun)
   if (fun == "fold X1/X2") {function.Y <- "X1/X2"}
   else if (fun == "substraction X1-X2") {function.Y <- "X1-X2"}
   else if (fun == "double fold (X1/X2)/(X3/X4)") {function.Y <- "(X1/X2)/(X3/X4)"}
   else if (fun == "background substraction fold (X1-X2)/(X3-X2)") {function.Y <- "(X1-X3)/(X2-X3)"}
+  else if (fun == "additivity (X1+X2)/X3") {function.Y <- "(X1+X2)/X3"}
   else {function.Y <- fun}
   allowed.characters <- gsub("(X1|X2|X3|X4|X5|X6)(?=$|\\+|\\-|\\*|\\/|\\(|\\)| )", "", function.Y, perl = TRUE)
   allowed.characters <- gsub("\\(|\\)|\\+|\\-|\\/|\\*| ", "", allowed.characters)

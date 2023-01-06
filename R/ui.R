@@ -21,7 +21,12 @@ mlemurUI <- function(request) {
                windowTitle="mlemur: MLE Mutation Rate Calculator",
                footer = column(12,
                                hr(),
-                               HTML("<center>mlemur: MLE Mutation Rate Calculator v0.9.6 | 2023 | GPL-2</center>"),
+                               HTML("<center>mlemur: MLE Mutation Rate Calculator v0.9.6.1 | 2023 | GPL-2</center>"),
+                               HTML("<center>This program is distributed in the hope that it will be useful,
+                                    but WITHOUT ANY WARRANTY; without even the implied warranty of
+                                    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+                                    GNU General Public License for more details.</center>"),
+                               HTML("<center>Some code used in this program was inspired by rSalvador by Qi Zheng, distributed under GPL-2 licence. See LICENSE.MD for more details.</center>"),
                                br(),
                                br()
                ),
@@ -483,7 +488,8 @@ mlemurUI <- function(request) {
                                                       "Strain 1 / Strain 2" = 1,
                                                       "Strain 1 - Strain 2" = 2,
                                                       "(Strain 1 / Strain 2) / (Strain 3 / Strain 4)" = 3,
-                                                      "(Strain 1 - Strain 3) / (Strain 2 - Strain 3)" = 4)),
+                                                      "(Strain 1 - Strain 3) / (Strain 2 - Strain 3)" = 4,
+                                                      "(Strain 1 + Strain 2) / Strain 3" = 5)),
                                      width = "100%", selected = 1)
                        ),
                        column(

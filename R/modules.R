@@ -25,13 +25,6 @@ settingsPlating <- function(input, output, session) {
   return(reactive(rv$value))
 }
 
-settingsPlatingUpdate <- function(input, output, session, choices, fold=FALSE) {
-  for (name in names(choices)) {
-    if (name %in% c("setSelective", "setNonselective") || (name == "setPerPlate" && !fold)) {shinyWidgets::updateAwesomeRadio(inputId = name, selected = as.numeric(choices[[name]]))}
-    else if (name == "setModel") {shinyWidgets::updateAwesomeCheckbox(inputId = "setModel", value = as.logical(choices[[name]]))}
-  }
-}
-
 countsPlatingUI <- function(id, currentTab, stack_cols=FALSE, usePreset, defaultSettings) {
   ns <- NS(id)
   number <- ifelse(stack_cols, 12, 6)
@@ -84,7 +77,7 @@ countsPlatingUI <- function(id, currentTab, stack_cols=FALSE, usePreset, default
             ns = NS(id),
             textInput(
               inputId = ns("Lag"),
-              label = HTML(paste("Phenotypic lag (generations):", infoTooltip("Please provide a positive number."))),
+              label = HTML(paste("Phenotypic lag (generations):", infoTooltip("Please provide a non-negative number (&ge;&nbsp;0)."))),
               value = useValues[12],
               width = "100%"
             )
@@ -503,10 +496,12 @@ countsPlating <- function(input, output, session, userSettings, stack_cols) {
       if (paste(ValueValidator(ReactValue$VolumeTotal), ValueValidator(ReactValue$VolumeSelective), ValueValidator(ReactValue$DilutionSelective), sep = "") == "") {
         if (PlatingValidator(ReactValue$VolumeSelective, ReactValue$DilutionSelective, ReactValue$VolumeTotal) != "") {
           ReactValue$errorsDetected <- TRUE
+          ReactValue$FeedbackAmountSelective <- TRUE
           textInputError(inputId = "VolumeSelective", text = paste(PlatingValidator(ReactValue$VolumeSelective, ReactValue$DilutionSelective, ReactValue$VolumeTotal)))
           textInputError(inputId = "DilutionSelective", text = "")
           textInputError(inputId = "VolumeTotal", text = "")
         } else {
+          ReactValue$FeedbackAmountSelective <- FALSE
           shinyFeedback::hideFeedback(inputId = "VolumeSelective")
           shinyFeedback::hideFeedback(inputId = "DilutionSelective")
           shinyFeedback::hideFeedback(inputId = "VolumeTotal")
@@ -518,13 +513,15 @@ countsPlating <- function(input, output, session, userSettings, stack_cols) {
       if (paste(ValueValidator(ReactValue$VolumeTotal), ValueValidator(ReactValue$VolumeNonselective), ValueValidator(ReactValue$DilutionNonselective), sep = "") == "") {
         if (PlatingValidator(ReactValue$VolumeNonselective, ReactValue$DilutionNonselective, ReactValue$VolumeTotal) != "") {
           ReactValue$errorsDetected <- TRUE
+          ReactValue$FeedbackAmountNonselective <- TRUE
           textInputError(inputId = "VolumeNonselective", text = paste(PlatingValidator(ReactValue$VolumeNonselective, ReactValue$DilutionNonselective, ReactValue$VolumeTotal)))
           textInputError(inputId = "DilutionNonselective", text = "")
           textInputError(inputId = "VolumeTotal", text = "")
         } else {
+          ReactValue$FeedbackAmountNonselective <- FALSE
           shinyFeedback::hideFeedback(inputId = "VolumeNonselective")
           shinyFeedback::hideFeedback(inputId = "DilutionNonselective")
-          shinyFeedback::hideFeedback(inputId = "VolumeTotal")
+          if (!ReactValue$FeedbackAmountSelective) shinyFeedback::hideFeedback(inputId = "VolumeTotal")
         }
       }
     }
@@ -542,20 +539,39 @@ countsPlating <- function(input, output, session, userSettings, stack_cols) {
           }
         }
       } else if (ReactValue$setNonselective == 1) {
-        if (paste(NonNegValueValidator(ReactValue$Inoculum), NonselectiveValidator(ReactValue$CountsNonselective), ValueValidator(ReactValue$VolumeTotal), ValueValidator(ReactValue$VolumeNonselective), ValueValidator(ReactValue$DilutionNonselective), sep = "") == "") {
-          if (ReactValue$Inoculum >= (mean(ReactValue$CountsNonselective) * ReactValue$DilutionNonselective * ReactValue$VolumeNonselective / ReactValue$VolumeTotal)) {
-            ReactValue$errorsDetected <- TRUE
-            textInputError(inputId = "Inoculum", text = paste("Size of the inoculum must be smaller than mean culture size."))
-            textInputError(inputId = "CountsNonselective", text = "")
-            textInputError(inputId = "DilutionNonselective", text = "")
-            textInputError(inputId = "VolumeNonselective", text = "")
-            textInputError(inputId = "VolumeTotal", text = "")
-          } else {
-            shinyFeedback::hideFeedback(inputId = "Inoculum")
-            shinyFeedback::hideFeedback(inputId = "CountsNonselective")
-            shinyFeedback::hideFeedback(inputId = "DilutionNonselective")
-            shinyFeedback::hideFeedback(inputId = "VolumeNonselective")
-            shinyFeedback::hideFeedback(inputId = "VolumeTotal")
+        if (ReactValue$setPerPlate == 1) {
+          if (paste(NonNegValueValidator(ReactValue$Inoculum), NonselectiveValidator(ReactValue$CountsNonselective), ValueValidator(ReactValue$VolumeTotal), ValueValidator(ReactValue$VolumeNonselective), ValueValidator(ReactValue$DilutionNonselective), sep = "") == "") {
+            if (ReactValue$Inoculum >= (mean(ReactValue$CountsNonselective) * ReactValue$DilutionNonselective * ReactValue$VolumeNonselective / ReactValue$VolumeTotal)) {
+              ReactValue$errorsDetected <- TRUE
+              textInputError(inputId = "Inoculum", text = paste("Size of the inoculum must be smaller than mean culture size."))
+              textInputError(inputId = "CountsNonselective", text = "")
+              textInputError(inputId = "DilutionNonselective", text = "")
+              textInputError(inputId = "VolumeNonselective", text = "")
+              textInputError(inputId = "VolumeTotal", text = "")
+            } else {
+              shinyFeedback::hideFeedback(inputId = "Inoculum")
+              shinyFeedback::hideFeedback(inputId = "CountsNonselective")
+              if (!ReactValue$FeedbackAmountNonselective) shinyFeedback::hideFeedback(inputId = "DilutionNonselective")
+              if (!ReactValue$FeedbackAmountNonselective) shinyFeedback::hideFeedback(inputId = "VolumeNonselective")
+              if (!ReactValue$FeedbackAmountNonselective && !ReactValue$FeedbackAmountSelective) shinyFeedback::hideFeedback(inputId = "VolumeTotal")
+            }
+          }
+        } else {
+          if (paste(NonNegValueValidator(ReactValue$Inoculum), NonselectivePerPlateValidator(ReactValue$CountsNonselective, ReactValue$CountsSelective), ValueValidator(ReactValue$VolumeTotal), ValueValidator(ReactValue$VolumeNonselective), ValueValidator(ReactValue$DilutionNonselective), sep = "") == "") {
+            if (any(ReactValue$Inoculum >= (ReactValue$CountsNonselective * ReactValue$DilutionNonselective * ReactValue$VolumeNonselective / ReactValue$VolumeTotal))) {
+              ReactValue$errorsDetected <- TRUE
+              textInputError(inputId = "Inoculum", text = paste("Size of the inoculum must be smaller than each culture size."))
+              textInputError(inputId = "CountsNonselective", text = "")
+              textInputError(inputId = "DilutionNonselective", text = "")
+              textInputError(inputId = "VolumeNonselective", text = "")
+              textInputError(inputId = "VolumeTotal", text = "")
+            } else {
+              shinyFeedback::hideFeedback(inputId = "Inoculum")
+              shinyFeedback::hideFeedback(inputId = "CountsNonselective")
+              if (!ReactValue$FeedbackAmountNonselective) shinyFeedback::hideFeedback(inputId = "DilutionNonselective")
+              if (!ReactValue$FeedbackAmountNonselective) shinyFeedback::hideFeedback(inputId = "VolumeNonselective")
+              if (!ReactValue$FeedbackAmountNonselective && !ReactValue$FeedbackAmountSelective) shinyFeedback::hideFeedback(inputId = "VolumeTotal")
+            }
           }
         }
       }
@@ -582,7 +598,7 @@ countsPlatingUpdate <- function(input, output, session, usePreset) {
   }
 }
 
-countsPlatingLoadDataset <- function(input, output, session, CountsRateUserInput, CountsStrain1UserInput, CountsStrain2UserInput,
+countsPlatingLoadDataset <- function(input, output, session, SettingsPlatingID = NULL, CountsRateUserInput, CountsStrain1UserInput, CountsStrain2UserInput,
                                      CountsStrain1FoldUserInput, CountsStrain2FoldUserInput, CountsStrain3FoldUserInput,
                                      CountsStrain4FoldUserInput, CountsStrain5FoldUserInput, CountsStrain6FoldUserInput,
                                      BatchCalcUserInput) {
@@ -710,6 +726,10 @@ countsPlatingLoadDataset <- function(input, output, session, CountsRateUserInput
       
       suppressWarnings({
         if (!is.null(choices)) {
+          if (!is.null(SettingsPlatingID)) {
+            command <- paste("document.getElementById('", SettingsPlatingID, "-setPerPlate1').click();", sep = "")
+            shinyjs::runjs(command)
+          }
           for (name in names(choices)) {
             if (name %in% c("VolumeTotal", "VolumeSelective", "DilutionSelective", "VolumeNonselective", "DilutionNonselective", "CountsSelective",
                             "Fitness", "PlatingEfficiency", "MeanCells", "CV", "Lag", "Residual", "Death", "Inoculum", "CountsNonselective") && !is.na(choices[[name]])) {
