@@ -196,7 +196,7 @@ std::vector<double> aux_seq_integrate_s(double e=1, double w=1, double d=0, doub
   int k;
   std::vector<double> res(n+1);
   
-  if ((e==1) && (d==0)) {
+  if (e==1 & d==0) {
     auto f = [&r, &k](double x) {
       return (r*pow(x,r)*pow(1.-x,k-1));
     };
@@ -208,13 +208,14 @@ std::vector<double> aux_seq_integrate_s(double e=1, double w=1, double d=0, doub
       l=0.0;
       chi=1.0;
       do {
+        checkUserInterrupt();
         res[k]=proxy;
         proxy+=factorial*tanh.integrate(f, pow(phi,w), chi)/(1.-phi*pow(chi,-r));
         l++;
         chi*=0.5;
-        if (chi < pow(phi,w)) {break;}
+        if ((chi < pow(phi,w)) && (l>1)) {break;}
         factorial*=lag/l;
-      } while ((std::abs(res[k]-proxy) > std::numeric_limits<double>::epsilon()) || (l < lag) || ((lag == 0) && (l < 2)));
+      } while ((std::abs(res[k]-proxy) > std::numeric_limits<double>::epsilon()) || (l < lag) || (l < 2));
       res[k]*=exp(-lag);
     };
     
@@ -231,13 +232,14 @@ std::vector<double> aux_seq_integrate_s(double e=1, double w=1, double d=0, doub
     l=0.0;
     chi=1.0;
     do {
+      checkUserInterrupt();
       res[0]=proxy;
       proxy+=factorial*tanh.integrate(f1, pow(phi,w), chi)/(1.-phi*pow(chi,-r));
       l++;
       chi*=0.5;
-      if (chi < pow(phi,w)) {break;}
+      if ((chi < pow(phi,w)) && (l>1)) {break;}
       factorial*=lag/l;
-    } while ((std::abs(res[0]-proxy) > std::numeric_limits<double>::epsilon()) || (l < lag));
+    } while ((std::abs(res[k]-proxy) > std::numeric_limits<double>::epsilon()) || (l < lag) || (l < 2));
     res[0]*=exp(-lag);
     res[0]-=exp(-lag+pow(2.,-r)*lag);
     
@@ -247,13 +249,14 @@ std::vector<double> aux_seq_integrate_s(double e=1, double w=1, double d=0, doub
       l=0.0;
       chi=1.0;
       do {
+        checkUserInterrupt();
         res[k]=proxy;
         proxy+=factorial*tanh.integrate(f, pow(phi,w), chi)/(1.-phi*pow(chi,-r));
         l++;
         chi*=0.5;
-        if (chi < pow(phi,w)) {break;}
+        if ((chi < pow(phi,w)) && (l>1)) {break;}
         factorial*=lag/l;
-      } while ((std::abs(res[k]-proxy) > std::numeric_limits<double>::epsilon()) || (l < lag) || ((lag == 0) && (l < 2)));
+      } while ((std::abs(res[k]-proxy) > std::numeric_limits<double>::epsilon()) || (l < lag) || (l < 2));
       res[k]*=exp(-lag);
     };
   };
@@ -428,7 +431,7 @@ std::vector<double> aux_seq_lag_s(double e=1, double lag=0, int n=10) {
         x++;
         if (x>max) {max=x;};
         factorial*=a/x;
-      } while ((std::abs(hSeq[k]-proxy) > std::numeric_limits<double>::epsilon()) || (x < a));
+      } while (((std::abs(hSeq[k]-proxy) > std::numeric_limits<double>::epsilon()) || (x < a)) || (x < 2));
       hSeq[k]*=exp(-a);
     };
   } else {
@@ -449,7 +452,7 @@ std::vector<double> aux_seq_lag_s(double e=1, double lag=0, int n=10) {
       x++;
       if (x>max) {max=x;};
       factorial*=a/x;
-    } while ((std::abs(qSeq[0]-proxy) > std::numeric_limits<double>::epsilon()) || (x < a));
+    } while (((std::abs(qSeq[0]-proxy) > std::numeric_limits<double>::epsilon()) || (x < a)) || (x < 2));
     hSeq[0]=qSeq[0];
     // q1
     if (n >= 1) {
@@ -465,7 +468,7 @@ std::vector<double> aux_seq_lag_s(double e=1, double lag=0, int n=10) {
         x++;
         if (x>max) {max=x;};
         factorial*=a/x;
-      } while ((std::abs(qSeq[1]-proxy) > std::numeric_limits<double>::epsilon()) || (x < a));
+      } while (((std::abs(qSeq[1]-proxy) > std::numeric_limits<double>::epsilon()) || (x < a)) || (x < 2));
       hSeq[1]=-odds*qSeq[0]+qSeq[1];
     };
     // qn
@@ -483,7 +486,7 @@ std::vector<double> aux_seq_lag_s(double e=1, double lag=0, int n=10) {
           x++;
           if (x>max) {max=x;};
           factorial*=a/x;
-        } while ((std::abs(qSeq[k]-proxy) > std::numeric_limits<double>::epsilon()) || (x < a));
+        } while (((std::abs(qSeq[k]-proxy) > std::numeric_limits<double>::epsilon()) || (x < a)) || (x < 2));
       };
       if (e<0.5) {
         for (k=1; k<=n-1; ++k) {
@@ -502,6 +505,7 @@ std::vector<double> aux_seq_lag_s(double e=1, double lag=0, int n=10) {
     };
   };
   
+  // Rcout << max << "\n";
   return(hSeq);
   
 }
@@ -522,7 +526,7 @@ std::vector<mpfr_20> aux_seq_lag_s(mpfr_20 e=1, mpfr_20 lag=0, int n=10) {
         proxy+=factorial*exp(-a)*(1.0-pow(1.0-pow(2,-x),k)*(1.0+k*pow(2,-x)))/k/(k+1.0);
         x++;
         factorial*=a/x;
-      } while ((mp::abs(hSeq[k]-proxy) > std::numeric_limits<mpfr_20>::epsilon()) || (x < a));
+      } while (((mp::abs(hSeq[k]-proxy) > std::numeric_limits<mpfr_20>::epsilon()) || (x < a)) || (x < 2));
     };
   } else {
     int len=n+100;
@@ -541,7 +545,7 @@ std::vector<mpfr_20> aux_seq_lag_s(mpfr_20 e=1, mpfr_20 lag=0, int n=10) {
       proxy+=factorial*exp(-a)*odds*log(-e*L/(xi-1.0));
       x++;
       factorial*=a/x;
-    } while ((mp::abs(qSeq[0]-proxy) > std::numeric_limits<mpfr_20>::epsilon()) || (x < a));
+    } while (((mp::abs(qSeq[0]-proxy) > std::numeric_limits<mpfr_20>::epsilon()) || (x < a)) || (x < 2));
     hSeq[0]=qSeq[0];
     // q1
     if (n >= 1) {
@@ -556,7 +560,7 @@ std::vector<mpfr_20> aux_seq_lag_s(mpfr_20 e=1, mpfr_20 lag=0, int n=10) {
         proxy+=factorial*exp(-a)*odds*(1.0/(xi-1.0)-log(-e*L/(xi-1.0)));
         x++;
         factorial*=a/x;
-      } while ((mp::abs(qSeq[1]-proxy) > std::numeric_limits<mpfr_20>::epsilon()) || (x < a));
+      } while (((mp::abs(qSeq[1]-proxy) > std::numeric_limits<mpfr_20>::epsilon()) || (x < a)) || (x < 2));
       hSeq[1]=-odds*qSeq[0]+qSeq[1];
     };
     // qn
@@ -573,7 +577,7 @@ std::vector<mpfr_20> aux_seq_lag_s(mpfr_20 e=1, mpfr_20 lag=0, int n=10) {
           proxy+=factorial*exp(-a)*odds/k/(k-1)*(1.0-(xi-k)*pow(div,k-1)/(xi-1.0));
           x++;
           factorial*=a/x;
-        } while ((mp::abs(qSeq[k]-proxy) > std::numeric_limits<mpfr_20>::epsilon()) || (x < a));
+        } while (((mp::abs(qSeq[k]-proxy) > std::numeric_limits<mpfr_20>::epsilon()) || (x < a)) || (x < 2));
       };
       if (e<0.5) {
         for (k=1; k<=n-1; ++k) {
