@@ -434,6 +434,7 @@ comboValidator <- function(DataPlating, DataSelective, DataNonselective) {
   ColumnPlatingTooBigSel <- 0
   ColumnPlatingTooBigNonsel <- 0
   ColumnTooMuchData <- 0
+  ColumnInoculumTooBig <- 0
   DataMissingSel <- 0
   DataMissingNonsel <- 0
   checkNonselNumeric <- 0
@@ -671,8 +672,8 @@ comboValidator <- function(DataPlating, DataSelective, DataNonselective) {
           DataPlating[parameterNumbers$Death,i] <- paste(DataPlating[parameterNumbers$Death,i], warningTooltip("Non-numeric characters detected."), sep = " ")
           CellNonnumeric <- CellNonnumeric+1
           colsWithErrors <- c(colsWithErrors, i-1)
-        } else if (as.numeric(DataPlating[parameterNumbers$Death,i]) < 0) {
-          DataPlating[parameterNumbers$Death,i] <- paste(DataPlating[parameterNumbers$Death,i], warningTooltip("Death rate must not smaller than 0."), sep = " ")
+        } else if (as.numeric(DataPlating[parameterNumbers$Death,i]) < 0 | as.numeric(DataPlating[parameterNumbers$Death,i]) >= 1) {
+          DataPlating[parameterNumbers$Death,i] <- paste(DataPlating[parameterNumbers$Death,i], warningTooltip("Death rate must not smaller than 0 (&ge;0) and smaller than 1 (&lt;1)."), sep = " ")
           CellNonpositive <- CellNonpositive+1
           colsWithErrors <- c(colsWithErrors, i-1)
         } else {
@@ -713,7 +714,7 @@ comboValidator <- function(DataPlating, DataSelective, DataNonselective) {
           DataPlating2["Lag",i-1] <- as.numeric(DataPlating[parameterNumbers$Lag,i])
         }
         if (ParameterExists["Fitness",i-1]==TRUE) {
-          DataPlating[parameterNumbers$Lag,i] <- paste(DataPlating[parameterNumbers$Lag,i], warningTooltip("Phenotypic lag cannot be used together with Fitness and/or Death rate."), sep = " ")
+          DataPlating[parameterNumbers$Lag,i] <- paste(DataPlating[parameterNumbers$Lag,i], warningTooltip("Phenotypic lag cannot be used together with Fitness."), sep = " ")
           TooMuchData <- 1
           colsWithErrors <- c(colsWithErrors, i-1)
         }
@@ -910,23 +911,41 @@ comboValidator <- function(DataPlating, DataSelective, DataNonselective) {
             colsWithErrors <- c(colsWithErrors, i-1)
           }
         }
-        # Checking if phenotypic lag and death/fitness have been specified together
+        # Checking if phenotypic lag and fitness have been specified together
         if (TooMuchData == 1) {
           ColumnTooMuchData <- ColumnTooMuchData + 1
         }
       }
+      
+      # Checking if inoculum size does not exceed culture size
+      if (!any(is.na(c(DataPlating2["DilutionNonselective",i-1], DataPlating2["VolumeNonselective",i-1], DataPlating2["VolumeTotal",i-1], DataPlating2["Inoculum",i-1], DataNonselective2[[i-1]])))) {
+        if (DataPlating2["Inoculum",i-1] >= (mean(DataNonselective2[[i-1]]) * DataPlating2["DilutionNonselective",i-1] / DataPlating2["VolumeNonselective",i-1] * DataPlating2["VolumeTotal",i-1])) {
+          DataPlating[parameterNumbers$Inoculum,i] <- paste(DataPlating[parameterNumbers$Inoculum,i], warningTooltip("Inoculum is bigger than mean culture size."), sep = " ")
+          ColumnInoculumTooBig <- ColumnInoculumTooBig + 1
+          colsWithErrors <- c(colsWithErrors, i-1)
+        }
+      } else if (!any(is.na(c(DataPlating2["Inoculum",i-1], DataPlating2["MeanCells",i-1])))) {
+        if (DataPlating2["Inoculum",i-1] >= DataPlating2["MeanCells",i-1]) {
+          DataPlating[parameterNumbers$Inoculum,i] <- paste(DataPlating[parameterNumbers$Inoculum,i], warningTooltip("Inoculum is bigger than mean culture size."), sep = " ")
+          ColumnInoculumTooBig <- ColumnInoculumTooBig + 1
+          colsWithErrors <- c(colsWithErrors, i-1)
+        }
+      }
     }
     
-    colnamesToSkip <- vector(mode = "character")
-    if (length(colsToSkip) > 0) {
-      colsToSkip <- sort(unique(colsToSkip))
-      
+    if (length(colsToSkip) > 0 || length(colsWithErrors) > 0) {
       badCols <- sort(unique(c(colsToSkip, colsWithErrors)))
       
       DataPlating2 <- DataPlating2[,-badCols,drop = FALSE]
       DataSelective2 <- DataSelective2[-badCols]
       DataNonselective2 <- DataNonselective2[-badCols]
+      
       if (length(DataPlating2)==0) NoGoodColumns <- TRUE
+    }
+    
+    colnamesToSkip <- vector(mode = "character")
+    if (length(colsToSkip) > 0) {
+      colsToSkip <- sort(unique(colsToSkip))
       
       for (i in colsToSkip) {
         colnames(DataPlating)[i+1] <- paste(colnames(DataPlating)[i+1], softWarningTooltip("This column will be skipped due to missing data."), sep = " ")
@@ -979,6 +998,7 @@ comboValidator <- function(DataPlating, DataSelective, DataNonselective) {
                        ifelse(checkNonselZeros != 0, paste(checkNonselZeros, "dataset(s) in Counts on non-selective medium do not contain any positive value.\n", sep = " "), ""),
                        ifelse(ColumnPlatingTooBigSel != 0, paste("In", ColumnPlatingTooBigSel, "dataset(s) in Counts on selective medium, plating efficiency is bigger than 1.\n", sep = " "), ""),
                        ifelse(ColumnTooMuchData != 0, paste("In", ColumnTooMuchData, "dataset(s), both Phenotypic lag and Fitness have been specified. Phenotypic lag cannot be used together with Fitness.\n", sep = " "), ""),
+                       ifelse(ColumnInoculumTooBig != 0, paste("In", ColumnInoculumTooBig, "dataset(s), Inoculum is bigger than average culture size.\n", sep = " "), ""),
                        ifelse(checkSelNumeric != 0, paste(checkSelNumeric, "count(s) on selective medium contain(s) numerical characters.\n", sep = " "), ""),
                        ifelse(checkSelNonNeg != 0, paste(checkSelNonNeg, "count(s) on selective medium are smaller than 0.\n", sep = " "), ""),
                        ifelse(checkSelZeros != 0, paste(checkSelZeros, "dataset(s) in Counts on selective medium do not contain any positive value.\n", sep = " "), ""),

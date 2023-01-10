@@ -541,7 +541,7 @@ countsPlating <- function(input, output, session, userSettings, stack_cols) {
       } else if (ReactValue$setNonselective == 1) {
         if (ReactValue$setPerPlate == 1) {
           if (paste(NonNegValueValidator(ReactValue$Inoculum), NonselectiveValidator(ReactValue$CountsNonselective), ValueValidator(ReactValue$VolumeTotal), ValueValidator(ReactValue$VolumeNonselective), ValueValidator(ReactValue$DilutionNonselective), sep = "") == "") {
-            if (ReactValue$Inoculum >= (mean(ReactValue$CountsNonselective) * ReactValue$DilutionNonselective * ReactValue$VolumeNonselective / ReactValue$VolumeTotal)) {
+            if (ReactValue$Inoculum >= (mean(ReactValue$CountsNonselective) * ReactValue$DilutionNonselective / ReactValue$VolumeNonselective * ReactValue$VolumeTotal)) {
               ReactValue$errorsDetected <- TRUE
               textInputError(inputId = "Inoculum", text = paste("Size of the inoculum must be smaller than mean culture size."))
               textInputError(inputId = "CountsNonselective", text = "")
@@ -558,7 +558,7 @@ countsPlating <- function(input, output, session, userSettings, stack_cols) {
           }
         } else {
           if (paste(NonNegValueValidator(ReactValue$Inoculum), NonselectivePerPlateValidator(ReactValue$CountsNonselective, ReactValue$CountsSelective), ValueValidator(ReactValue$VolumeTotal), ValueValidator(ReactValue$VolumeNonselective), ValueValidator(ReactValue$DilutionNonselective), sep = "") == "") {
-            if (any(ReactValue$Inoculum >= (ReactValue$CountsNonselective * ReactValue$DilutionNonselective * ReactValue$VolumeNonselective / ReactValue$VolumeTotal))) {
+            if (any(ReactValue$Inoculum >= (ReactValue$CountsNonselective * ReactValue$DilutionNonselective / ReactValue$VolumeNonselective * ReactValue$VolumeTotal))) {
               ReactValue$errorsDetected <- TRUE
               textInputError(inputId = "Inoculum", text = paste("Size of the inoculum must be smaller than each culture size."))
               textInputError(inputId = "CountsNonselective", text = "")

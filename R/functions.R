@@ -104,85 +104,44 @@ rluria <- function(n=10, rate=1e-8, N0=1, Nt=1e9, mut_fit=1.0, death_prob=0, lag
 # 2008;216: 150–153. doi:10.1016/j.mbs.2008.09.002
 aux.seq <- function(e = 1, w = 1, death = 0, lag = 0, phi = 0, n = 10, integrate = FALSE) {
   
-  error <- 0
+  seq <- NA
+  
+  check_seq <- function(seq) {
+    if (is.null(seq)) return(TRUE)
+    else if (!all(is.finite(seq))) return(TRUE)
+    else if (any(is.logical(seq))) return(TRUE)
+    else if ((any(seq[-1] <= 0) && seq[(which(seq==0)[1]-1)] > 1e-300) || all(seq[-1] == 0)) return(TRUE)
+    else if (length(seq) < 2) return(TRUE)
+    else return(FALSE)
+  }
   
   if (integrate == FALSE) {
     
     if (death==0 & lag==0 & phi==0) {
-      
-      seq <- tryCatch(aux_seq(e = e, w = w, n = n), error = function(err) {seq <- NULL})
-      
-      if (is.null(seq)) {error <- 1}
-      else if (!all(is.finite(seq))) {error <- 1}
-      else if (any(is.logical(seq))) {error <- 1}
-      else if (any(seq[-1] <= 0)) {error <- 1}
-      else if (length(seq) < 2) {error <- 1}
-      
-      if (error == 1) {seq <- tryCatch(aux_seq(e = e, w = w, n = n, option = 2), error = function(err) {seq <- NULL})}
+      seq <- tryCatch(aux_seq(e = e, w = w, n = n), error = function(err) {seq <- NA})
+      if (check_seq(seq)) {seq <- tryCatch(aux_seq(e = e, w = w, n = n, option = 2), error = function(err) {seq <- NA})}
       
     } else if (lag!=0 & w==1 & death==0 & phi==0) {
-      
-      seq <- tryCatch(aux_seq_lag_s_ext(lag = lag, e = e, n = n), error = function(err) {seq <- NULL})
-      error <- 0
-      
-      if (is.null(seq)) {error <- 1}
-      else if (!all(is.finite(seq))) {error <- 1}
-      else if (any(is.logical(seq))) {error <- 1}
-      else if (any(seq[-1] <= 0)) {error <- 1}
-      else if (length(seq) < 2) {error <- 1}
-      
-      if (error == 1) {seq <- tryCatch(aux_seq_lag_s_ext(lag = lag, e = e, n = n, boost = TRUE), error = function(err) {seq <- NULL})}
+      seq <- tryCatch(aux_seq_lag_s_ext(lag = lag, e = e, n = n), error = function(err) {seq <- NA})
+      if (check_seq(seq)) {seq <- tryCatch(aux_seq_lag_s_ext(lag = lag, e = e, n = n, boost = TRUE), error = function(err) {seq <- NA})}
       
     } else if (death!=0 & lag==0 & phi==0) {
-      
-      seq <- tryCatch(aux_seq_death_ext(e = e, w = w, d = death/(1-death), n = n), error = function(err) {seq <- NULL})
-      
-      if (is.null(seq)) {error <- 1}
-      else if (!all(is.finite(seq))) {error <- 1}
-      else if (any(is.logical(seq))) {error <- 1}
-      else if (any(seq[-1] <= 0)) {error <- 1}
-      else if (length(seq) < 2) {error <- 1}
-      
-      if (error == 1) {seq <- tryCatch(aux_seq_death_ext(e = e, w = w, d = death/(1-death), n = n, boost = TRUE), error = function(err) {seq <- NULL})}
+      seq <- tryCatch(aux_seq_death_ext(e = e, w = w, d = death/(1-death), n = n), error = function(err) {seq <- NA})
+      if (check_seq(seq)) {seq <- tryCatch(aux_seq_death_ext(e = e, w = w, d = death/(1-death), n = n, boost = TRUE), error = function(err) {seq <- NA})}
       
     } else {
-      
       return(aux.seq(e = e, w = w, death = death, lag = lag, phi = phi, n = n, integrate = TRUE))
-      
     }
-    
-    error <- 0
-    
-    if (is.null(seq)) {error <- 1}
-    else if (!all(is.finite(seq))) {error <- 1}
-    else if (any(is.logical(seq))) {error <- 1}
-    else if (any(seq[-1] <= 0)) {error <- 1}
-    else if (length(seq) < 2) {error <- 1}
-    
   }
   
-  if (error == 1 | integrate == TRUE) {
-    
-    error <- 0
-    
+  if (check_seq(seq) | integrate == TRUE) {
     seq <- aux_seq_integrate_s(e=e, w=w, d=death/(1-death), lag=lag, phi=phi, n=n)
-    
-    if (is.null(seq)) {error <- 1}
-    else if (!all(is.finite(seq))) {error <- 1}
-    else if (any(is.logical(seq))) {error <- 1}
-    else if (any(seq[-1] <= 0)) {error <- 1}
-    else if (length(seq) < 2) {error <- 1}
-    
   }
   
-  if (error == 1) {
-    
+  if (check_seq(seq)) {
     return(NA)
-    
   } else {
-    
     return(as.numeric(seq)/(1 - death/(1-death)))
-    
   }
 }
 
