@@ -145,6 +145,52 @@ aux.seq <- function(e = 1, w = 1, death = 0, lag = 0, phi = 0, n = 10, integrate
   }
 }
 
+# When n0 != 9
+aux.seq.n0 <- function(e = 1, w = 1, death = 0, lag = 0, phi = 0, n0 = 0, n = 10, integrate = FALSE) {
+  setTimeLimit(cpu = 10, elapsed = 10, transient = TRUE)
+  on.exit(setTimeLimit(cpu = Inf, elapsed = Inf, transient = FALSE))
+  
+  seq <- NA
+  
+  check_seq <- function(seq) {
+    if (is.null(seq)) return(TRUE)
+    else if (!all(is.finite(seq))) return(TRUE)
+    else if (any(is.logical(seq))) return(TRUE)
+    else if ((any(seq[-1] <= 0) && seq[(which(seq==0)[1]-1)] > 1e-300) || all(seq[-1] == 0)) return(TRUE)
+    else if (length(seq) < 2) return(TRUE)
+    else return(FALSE)
+  }
+  
+  if (integrate == FALSE) {
+    
+    if (death==0 & lag==0 & phi==0) {
+      seq <- tryCatch(aux_seq_ext_n0(e = e, w = w, n = n, n0 = n0), error = function(err) {seq <- NA})
+      if (check_seq(seq)) {seq <- tryCatch(aux_seq_ext_n0(e = e, w = w, n = n, n0 = n0, boost = TRUE), error = function(err) {seq <- NA})}
+      
+    } else if (lag!=0 & w==1 & death==0 & phi==0) {
+      seq <- tryCatch(aux_seq_lag_s_ext_n0(lag = lag, e = e, n = n, n0 = n0), error = function(err) {seq <- NA})
+      if (check_seq(seq)) {seq <- tryCatch(aux_seq_lag_s_ext_n0(lag = lag, e = e, n = n, n0 = n0, boost = TRUE), error = function(err) {seq <- NA})}
+      
+    } else if (death!=0 & lag==0 & phi==0) {
+      seq <- tryCatch(aux_seq_death_ext_n0(e = e, w = w, d = death/(1-death), n = n, n0 = n0), error = function(err) {seq <- NA})
+      if (check_seq(seq)) {seq <- tryCatch(aux_seq_death_ext_n0(e = e, w = w, d = death/(1-death), n = n, n0 = n0, boost = TRUE), error = function(err) {seq <- NA})}
+      
+    } else {
+      return(aux.seq.n0(e = e, w = w, death = death, lag = lag, phi = phi, n = n, n0 = n0, integrate = TRUE))
+    }
+  }
+  
+  if (check_seq(seq) | integrate == TRUE) {
+    seq <- aux_seq_integrate_s_n0(e=e, w=w, d=death/(1-death), lag=lag, phi=phi, n=n, n0 = n0)
+  }
+  
+  if (check_seq(seq)) {
+    return(NA)
+  } else {
+    return(as.numeric(seq)/(1 - death/(1-death)))
+  }
+}
+
 # derived from rSalvador by Qi Zheng
 #' Estimate m using p0 method
 #'
@@ -1211,32 +1257,21 @@ power.est <- function(n1 = 30, n2 = NULL, rate1 = 1e-9, rate2 = 2e-9, Nt1 = 1e9,
   else if (is.null(n1)) {n1 <- n2}
   
   if (verbose) message("Calculating prob1")
-  N1 <- 5000
-  prob1 <- 0
-  iter <- 0
-  while (sum(prob1) < 0.99) {
-    N1 <- N1 + 5000
-    prob1 <- prob_mutations(m = rate1*Nt1, n = N1, e = e1, w = w1, cv = cv1, death = death1, lag = lag1, phi = phi1, poisson = poisson1)
-    if (iter>5) stop()
-  }
+  list1 <- prob_mutations_n0(m = rate1*Nt1, e = e1, w = w1, cv = cv1, death = death1, lag = lag1, phi = phi1, poisson = poisson1, cdf = 0.99, maxiter = 10)
+  seq1 <- list1[[1]]
+  prob1 <- list1[[2]]
+  if (sum(prob1)<0.99) stop(paste("Execution halted at N=", length(prob1), "because sufficient value of CDF (0.99) was not achieved. The value of CDF is ", sum(prob1), ". This might be due to high value of m or w.", sep = ""))
+  if (verbose) message(paste("At N=", length(prob1), " the value of CDF is ", sum(prob1), ".", sep = ""))
   
   if (verbose) message("Calculating prob2")
-  N2 <- 5000
-  prob2 <- 0
-  iter <- 0
-  while (sum(prob2) < 0.99) {
-    N2 <- N2 + 5000
-    prob2 <- prob_mutations(m = rate2*Nt2, n = N2, e = e2, w = w2, cv = cv2, death = death2, lag = lag2, phi = phi2, poisson = poisson2)
-    if (iter>5) stop()
-  }
+  list2 <- prob_mutations_n0(m = rate2*Nt2, e = e2, w = w2, cv = cv2, death = death2, lag = lag2, phi = phi2, poisson = poisson2, cdf = 0.99, maxiter = 10)
+  seq2 <- list2[[1]]
+  prob2 <- list2[[2]]
+  if (sum(prob2)<0.99) stop(paste("Execution halted at N=", length(prob2), "because sufficient value of CDF (0.99) was not achieved. The value of CDF is ", sum(prob2), ". This might be due to high value of m or w.", sep = ""))
+  if (verbose) message(paste("At N=", length(prob2), " the value of CDF is ", sum(prob2), ".", sep = ""))
   
-  cv1 <- 0
-  cv2 <- 0
   if (cv1>0) {k1 <- 1/cv1/cv1} else {k1 <- 0}
   if (cv2>0) {k2 <- 1/cv2/cv2} else {k2 <- 0}
-  
-  seq1 <- aux.seq(e = e1, w = w1, death = death1, lag = lag1, phi = phi1, n = N1-1)
-  seq2 <- aux.seq(e = e2, w = w2, death = death2, lag = lag2, phi = phi2, n = N2-1)
   
   Nt1 <- Nt1*(1-phi1)
   Nt2 <- Nt2*(1-phi2)
@@ -1244,20 +1279,19 @@ power.est <- function(n1 = 30, n2 = NULL, rate1 = 1e-9, rate2 = 2e-9, Nt1 = 1e9,
   # combined mutation rate
   if (verbose) message("Finding combined mutation rate")
   if (Nt1>Nt2) {
-    m.est <- optim_m_from_probs(current_m = (rate1*Nt1+rate2*Nt2)/2, lower_m = min(rate1*Nt1,rate2*Nt2)/2, upper_m = max(rate1*Nt1,rate2*Nt2)*2, R = Nt2/Nt1, k1 = 0,
-                                k2 = 0, poisson1 = 0, poisson2 = 0, seq1 = seq1, seq2 = seq2, prob1 = prob1, prob2 = prob2, verbose = verbose)[1]
-    probc1 <- prob_mutations(m = m.est, n = N1, e = e1, w = w1, cv = cv1, death = death1, lag = lag1, phi = phi1, poisson = poisson1)
-    probc2 <- prob_mutations(m = Nt2/Nt1*m.est, n = N2, e = e2, w = w2, cv = cv2, death = death2, lag = lag2, phi = phi2, poisson = poisson2)
+    m.est <- optim_m_from_probs(current_m = (rate1*Nt1+rate2*Nt2)/2, lower_m = min(rate1*Nt1,rate2*Nt2)/2, upper_m = max(rate1*Nt1,rate2*Nt2)*2, R = Nt2/Nt1, k1 = k1,
+                                k2 = k2, poisson1 = poisson1, poisson2 = poisson2, seq1 = seq1, seq2 = seq2, prob1 = prob1, prob2 = prob2,
+                                m1 = rate1*Nt1, m2 = rate2*Nt2, prob1_boost = list1[[3]], prob2_boost = list2[[3]], verbose = verbose)
   } else {
-    m.est <- optim_m_from_probs(current_m = (rate2*Nt2+rate1*Nt1)/2, lower_m = min(rate1*Nt1,rate2*Nt2)/2, upper_m = max(rate1*Nt1,rate2*Nt2)*2, R = Nt1/Nt2, k1 = 0,
-                                k2 = 0, poisson1 = 0, poisson2 = 0, seq1 = seq2, seq2 = seq1, prob1 = prob2, prob2 = prob1, verbose = verbose)[1]
-    probc1 <- prob_mutations(m = Nt1/Nt2*m.est, n = N1, e = e1, w = w1, cv = cv1, death = death1, lag = lag1, phi = phi1, poisson = poisson1)
-    probc2 <- prob_mutations(m = m.est, n = N2, e = e2, w = w2, cv = cv2, death = death2, lag = lag2, phi = phi2, poisson = poisson2)
+    m.est <- optim_m_from_probs(current_m = (rate2*Nt2+rate1*Nt1)/2, lower_m = min(rate1*Nt1,rate2*Nt2)/2, upper_m = max(rate1*Nt1,rate2*Nt2)*2, R = Nt1/Nt2, k1 = k2,
+                                k2 = k1, poisson1 = poisson2, poisson2 = poisson1, seq1 = seq2, seq2 = seq1, prob1 = prob2, prob2 = prob1,
+                                m1 = rate2*Nt2, m2 = rate1*Nt1, prob1_boost = list2[[3]], prob2_boost = list1[[3]], verbose = verbose)
+    m.est <- c(m.est[1:2], m.est[5:6], m.est[3:4])
   }
-  if (verbose) message(paste("Found combined m", m.est))
+  if (verbose) message(paste("Found combined m", m.est[1]))
   
-  if (verbose) message("Finding non-centrality parameter")
-  D <- sapply(n1, function(x) {sapply(n2, function(y) {2*(x*sum(log(prob1)*prob1)-x*sum(log(probc1)*prob1) + y*sum(log(prob2)*prob2)-y*sum(log(probc2)*prob2))})})
+  if (verbose) message("Finding the non-centrality parameter")
+  D <- sapply(n1, function(x) {sapply(n2, function(y) {2*(x*m.est[3]-x*m.est[4] + y*m.est[5]-y*m.est[6])})})
   D[D<0] <- 0
   power <- pchisq(qchisq(p = 0.95, df = 1), ncp = D, df = 1, lower.tail = F)
   if (length(power)>1) {power <- matrix(power, ncol = length(n1), nrow = length(n2)); colnames(power) <- paste("n1=", n1, sep = ""); rownames(power) <- paste("n2=", n2, sep = "")}
@@ -1311,32 +1345,21 @@ sample.size <- function(power=0.8, rate1 = 1e-9, rate2 = 2e-9, Nt1 = 1e9, Nt2 = 
   if (any(power<=0) || any(power>=1)) {stop("Power must be between 0 and 1.")}
   
   if (verbose) message("Calculating prob1")
-  N1 <- 5000
-  prob1 <- 0
-  iter <- 0
-  while (sum(prob1) < 0.99) {
-    N1 <- N1 + 5000
-    prob1 <- prob_mutations(m = rate1*Nt1, n = N1, e = e1, w = w1, cv = cv1, death = death1, lag = lag1, phi = phi1, poisson = poisson1)
-    if (iter>5) stop()
-  }
+  list1 <- prob_mutations_n0(m = rate1*Nt1, e = e1, w = w1, cv = cv1, death = death1, lag = lag1, phi = phi1, poisson = poisson1, cdf = 0.99, maxiter = 10)
+  seq1 <- list1[[1]]
+  prob1 <- list1[[2]]
+  if (sum(prob1)<0.99) stop(paste("Execution halted at N=", length(prob1), "because sufficient value of CDF (0.99) was not achieved. The value of CDF is ", sum(prob1), ". This might be due to high value of m or w.", sep = ""))
+  if (verbose) message(paste("At N=", length(prob1), " the value of CDF is ", sum(prob1), ".", sep = ""))
   
   if (verbose) message("Calculating prob2")
-  N2 <- 5000
-  prob2 <- 0
-  iter <- 0
-  while (sum(prob2) < 0.99) {
-    N2 <- N2 + 5000
-    prob2 <- prob_mutations(m = rate2*Nt2, n = N2, e = e2, w = w2, cv = cv2, death = death2, lag = lag2, phi = phi2, poisson = poisson2)
-    if (iter>5) stop()
-  }
-  
-  cv1 <- 0
-  cv2 <- 0
+  list2 <- prob_mutations_n0(m = rate2*Nt2, e = e2, w = w2, cv = cv2, death = death2, lag = lag2, phi = phi2, poisson = poisson2, cdf = 0.99, maxiter = 10)
+  seq2 <- list2[[1]]
+  prob2 <- list2[[2]]
+  if (sum(prob2)<0.99) stop(paste("Execution halted at N=", length(prob2), "because sufficient value of CDF (0.99) was not achieved. The value of CDF is ", sum(prob2), ". This might be due to high value of m or w.", sep = ""))
+  if (verbose) message(paste("At N=", length(prob2), " the value of CDF is ", sum(prob2), ".", sep = ""))
+
   if (cv1>0) {k1 <- 1/cv1/cv1} else {k1 <- 0}
   if (cv2>0) {k2 <- 1/cv2/cv2} else {k2 <- 0}
-  
-  seq1 <- aux.seq(e = e1, w = w1, death = death1, lag = lag1, phi = phi1, n = N1-1)
-  seq2 <- aux.seq(e = e2, w = w2, death = death2, lag = lag2, phi = phi2, n = N2-1)
   
   Nt1 <- Nt1*(1-phi1)
   Nt2 <- Nt2*(1-phi2)
@@ -1344,19 +1367,18 @@ sample.size <- function(power=0.8, rate1 = 1e-9, rate2 = 2e-9, Nt1 = 1e9, Nt2 = 
   # combined mutation rate
   if (verbose) message("Finding combined mutation rate")
   if (Nt1>Nt2) {
-    m.est <- optim_m_from_probs(current_m = (rate1*Nt1+rate2*Nt2)/2, lower_m = min(rate1*Nt1,rate2*Nt2)/2, upper_m = max(rate1*Nt1,rate2*Nt2)*2, R = Nt2/Nt1, k1 = 0,
-                                k2 = 0, poisson1 = 0, poisson2 = 0, seq1 = seq1, seq2 = seq2, prob1 = prob1, prob2 = prob2, verbose = verbose)[1]
-    probc1 <- prob_mutations(m = m.est, n = N1, e = e1, w = w1, cv = cv1, death = death1, lag = lag1, phi = phi1, poisson = poisson1)
-    probc2 <- prob_mutations(m = Nt2/Nt1*m.est, n = N2, e = e2, w = w2, cv = cv2, death = death2, lag = lag2, phi = phi2, poisson = poisson2)
+    m.est <- optim_m_from_probs(current_m = (rate1*Nt1+rate2*Nt2)/2, lower_m = min(rate1*Nt1,rate2*Nt2)/2, upper_m = max(rate1*Nt1,rate2*Nt2)*2, R = Nt2/Nt1, k1 = k1,
+                                k2 = k2, poisson1 = poisson1, poisson2 = poisson2, seq1 = seq1, seq2 = seq2, prob1 = prob1, prob2 = prob2,
+                                m1 = rate1*Nt1, m2 = rate2*Nt2, prob1_boost = list1[[3]], prob2_boost = list2[[3]], verbose = verbose)
   } else {
-    m.est <- optim_m_from_probs(current_m = (rate2*Nt2+rate1*Nt1)/2, lower_m = min(rate1*Nt1,rate2*Nt2)/2, upper_m = max(rate1*Nt1,rate2*Nt2)*2, R = Nt1/Nt2, k1 = 0,
-                                k2 = 0, poisson1 = 0, poisson2 = 0, seq1 = seq2, seq2 = seq1, prob1 = prob2, prob2 = prob1, verbose = verbose)[1]
-    probc1 <- prob_mutations(m = Nt1/Nt2*m.est, n = N1, e = e1, w = w1, cv = cv1, death = death1, lag = lag1, phi = phi1, poisson = poisson1)
-    probc2 <- prob_mutations(m = m.est, n = N2, e = e2, w = w2, cv = cv2, death = death2, lag = lag2, phi = phi2, poisson = poisson2)
+    m.est <- optim_m_from_probs(current_m = (rate2*Nt2+rate1*Nt1)/2, lower_m = min(rate1*Nt1,rate2*Nt2)/2, upper_m = max(rate1*Nt1,rate2*Nt2)*2, R = Nt1/Nt2, k1 = k2,
+                                k2 = k1, poisson1 = poisson2, poisson2 = poisson1, seq1 = seq2, seq2 = seq1, prob1 = prob2, prob2 = prob1,
+                                m1 = rate2*Nt2, m2 = rate1*Nt1, prob1_boost = list2[[3]], prob2_boost = list1[[3]], verbose = verbose)
+    m.est <- c(m.est[1:2], m.est[5:6], m.est[3:4])
   }
-  if (verbose) message(paste("Found combined m", m.est))
+  if (verbose) message(paste("Found combined m", m.est[1]))
   
-  if (verbose) message("Finding non-centrality parameter")
+  if (verbose) message("Finding the non-centrality parameter")
   D <- rep(0, length(power))
   for (i in 1:length(power)){
     upperlimit <- 10
@@ -1364,7 +1386,7 @@ sample.size <- function(power=0.8, rate1 = 1e-9, rate2 = 2e-9, Nt1 = 1e9, Nt2 = 
     D[i] <- uniroot(function(D, a) {pchisq(qchisq(p = 0.95, df = 1), ncp = D, df = 1, lower.tail = F)-a}, c(0,upperlimit), tol = 0.0001, a = power[i])$root
   }
   if (verbose) message("Calculating required sample size")
-  n <- D/2/(sum(log(prob1)*prob1)-sum(log(probc1)*prob1) + sum(log(prob2)*prob2)-sum(log(probc2)*prob2))
+  n <- D/2/(m.est[3]-m.est[4] + m.est[5]-m.est[6])
   
   return(ceiling(n))
 }

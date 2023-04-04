@@ -73,11 +73,39 @@ root_m_every_Nt <- function(current_m, lower_m, upper_m, seqs, R, data, k, poiss
     .Call(`_mlemur_root_m_every_Nt`, current_m, lower_m, upper_m, seqs, R, data, k, poisson, lalpha, verbose)
 }
 
-optim_m_from_probs <- function(current_m, lower_m, upper_m, R, k1, k2, poisson1, poisson2, seq1, seq2, prob1, prob2, verbose = FALSE) {
-    .Call(`_mlemur_optim_m_from_probs`, current_m, lower_m, upper_m, R, k1, k2, poisson1, poisson2, seq1, seq2, prob1, prob2, verbose)
+aux_seq_integrate_s_n0 <- function(e = 1, w = 1, d = 0, lag = 0, phi = 0, n = 10L, n0 = 0L) {
+    .Call(`_mlemur_aux_seq_integrate_s_n0`, e, w, d, lag, phi, n, n0)
+}
+
+aux_seq_ext_n0 <- function(e = 1, w = 0, n = 10L, boost = FALSE, n0 = 0L) {
+    .Call(`_mlemur_aux_seq_ext_n0`, e, w, n, boost, n0)
+}
+
+aux_seq_lag_s_ext_n0 <- function(e = 1, lag = 0, n = 10L, boost = FALSE, n0 = 0L) {
+    .Call(`_mlemur_aux_seq_lag_s_ext_n0`, e, lag, n, boost, n0)
+}
+
+aux_seq_death_ext_n0 <- function(e, w, d, n, boost = FALSE, n0 = 0L) {
+    .Call(`_mlemur_aux_seq_death_ext_n0`, e, w, d, n, boost, n0)
+}
+
+prob_mutations_n0_boost <- function(m, e = 1, w = 1, cv = 0, death = 0, lag = 0, phi = 0, poisson = 0, cdf = 0.99, maxiter = 10L) {
+    .Call(`_mlemur_prob_mutations_n0_boost`, m, e, w, cv, death, lag, phi, poisson, cdf, maxiter)
+}
+
+prob_mutations_n0 <- function(m, e = 1, w = 1, cv = 0, death = 0, lag = 0, phi = 0, poisson = 0, cdf = 0.99, maxiter = 10L) {
+    .Call(`_mlemur_prob_mutations_n0`, m, e, w, cv, death, lag, phi, poisson, cdf, maxiter)
 }
 
 prob_mutations <- function(m, n, e = 1, w = 1, cv = 0, death = 0, lag = 0, phi = 0, poisson = 0) {
     .Call(`_mlemur_prob_mutations`, m, n, e, w, cv, death, lag, phi, poisson)
+}
+
+sum_probs <- function(m, n, e = 1, w = 1, cv = 0, death = 0, lag = 0, phi = 0, poisson = 0, loglik = FALSE) {
+    .Call(`_mlemur_sum_probs`, m, n, e, w, cv, death, lag, phi, poisson, loglik)
+}
+
+optim_m_from_probs <- function(current_m, lower_m, upper_m, R, k1, k2, poisson1, poisson2, seq1, seq2, prob1, prob2, m1, m2, prob1_boost, prob2_boost, verbose = FALSE) {
+    .Call(`_mlemur_optim_m_from_probs`, current_m, lower_m, upper_m, R, k1, k2, poisson1, poisson2, seq1, seq2, prob1, prob2, m1, m2, prob1_boost, prob2_boost, verbose)
 }
 

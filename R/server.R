@@ -818,7 +818,7 @@ mlemurServer <- function(input, output, session) {
       xarg <- rep(1:(table.length-1), (table.length-1):1)
       yarg <- unlist(sapply(2:table.length, function(x) x:table.length))
       
-      proxy <- mapply(function(x,y) {calc.pval.int(rv$PlatingList[[x]], rv$PlatingList[[y]], NoOfMutations[[x]], NoOfMutations[[y]])}, x = xarg, y = yarg)
+      proxy <- mapply(function(x,y) {calc.pval.int(rv$PlatingListCopy[[x]], rv$PlatingListCopy[[y]], NoOfMutations[[x]], NoOfMutations[[y]])}, x = xarg, y = yarg)
 
       DataPvalue <- matrix(NA,nrow=table.length,ncol=table.length,dimnames = list(names(DataRate),names(DataRate)))
       DataPvalue[lower.tri(DataPvalue)] <- proxy
