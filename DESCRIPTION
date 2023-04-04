@@ -1,15 +1,14 @@
 Package: mlemur
 Type: Package
 Title: MLE MUtatution Rate Calculator
-Version: 0.9.6.2
-Date: 2023-01-10
+Version: 0.9.6.4
+Date: 2023-04-03
 Authors@R: c(person("Krystian", "Lazowski", role = c("aut", "cre"),
 	           email = "lazowski.krystian@outlook.com", comment = c(ORCID="0000-0001-5163-7026")),
-	           person("Qi", "Zheng", role = "ctb", comment = "The code for simulating fluctuation experiments (rluria),
-	           calculating some auxiliary sequences (aux_seq), the values of probability mass function
-	           (prob_ld, prob_ld_deriv, prob_b0), maximum likelihood estimates (optim_m), confidence intervals (root_m),
-	           p-values (combo_optim_m), and number of mutations (p0, jones.median), was inspired by the frameworks
-	           developed by Qi Zheng and implemented in rSalvador. The functions are referenced in documentation."))
+	           person("Qi", "Zheng", role = "ctb", comment = "The code for simulating fluctuation experiments,
+	           calculating selected auxiliary sequences, the values of probability mass function, maximum likelihood
+	           estimates, confidence intervals, p-values, was inspired by the frameworks developed by Qi Zheng and
+	           implemented in rSalvador. The functions are referenced in documentation."))
 Author: Krystian Lazowski [aut, cre] (<https://orcid.org/0000-0001-5163-7026>),
         Qi Zheng [ctb]
 Maintainer: Krystian Lazowski <klazowski@ibb.waw.pl>

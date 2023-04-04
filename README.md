@@ -1,8 +1,8 @@
 # mlemur
 ## Instructions (Windows)
-1. Install newest version of R (currently 4.2.2) in the default location from <https://cran.r-project.org/bin/windows/base/>
+1. Install newest version of R (currently 4.2.3) in the default location from <https://cran.r-project.org/bin/windows/base/>
 
-2. Install newest version of RTools (currently 4.2) in the default location from <https://cran.r-project.org/bin/windows/Rtools/>
+2. Install the corresponding version of RTools (e.g., if R version is 4.2.x, then RTools must be 4.2) in the default location from <https://cran.r-project.org/bin/windows/Rtools/>
 
 3. Proceed to the next part. You can either follow instruction for installing the pre-compiled binary or compiling from the source file (recommended).
 
