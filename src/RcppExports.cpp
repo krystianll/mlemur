@@ -417,45 +417,6 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// prob_mutations
-std::vector<double> prob_mutations(double m, int n, double e, double w, double cv, double death, double lag, double phi, double poisson);
-RcppExport SEXP _mlemur_prob_mutations(SEXP mSEXP, SEXP nSEXP, SEXP eSEXP, SEXP wSEXP, SEXP cvSEXP, SEXP deathSEXP, SEXP lagSEXP, SEXP phiSEXP, SEXP poissonSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< double >::type m(mSEXP);
-    Rcpp::traits::input_parameter< int >::type n(nSEXP);
-    Rcpp::traits::input_parameter< double >::type e(eSEXP);
-    Rcpp::traits::input_parameter< double >::type w(wSEXP);
-    Rcpp::traits::input_parameter< double >::type cv(cvSEXP);
-    Rcpp::traits::input_parameter< double >::type death(deathSEXP);
-    Rcpp::traits::input_parameter< double >::type lag(lagSEXP);
-    Rcpp::traits::input_parameter< double >::type phi(phiSEXP);
-    Rcpp::traits::input_parameter< double >::type poisson(poissonSEXP);
-    rcpp_result_gen = Rcpp::wrap(prob_mutations(m, n, e, w, cv, death, lag, phi, poisson));
-    return rcpp_result_gen;
-END_RCPP
-}
-// sum_probs
-double sum_probs(double m, int n, double e, double w, double cv, double death, double lag, double phi, double poisson, const bool& loglik);
-RcppExport SEXP _mlemur_sum_probs(SEXP mSEXP, SEXP nSEXP, SEXP eSEXP, SEXP wSEXP, SEXP cvSEXP, SEXP deathSEXP, SEXP lagSEXP, SEXP phiSEXP, SEXP poissonSEXP, SEXP loglikSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< double >::type m(mSEXP);
-    Rcpp::traits::input_parameter< int >::type n(nSEXP);
-    Rcpp::traits::input_parameter< double >::type e(eSEXP);
-    Rcpp::traits::input_parameter< double >::type w(wSEXP);
-    Rcpp::traits::input_parameter< double >::type cv(cvSEXP);
-    Rcpp::traits::input_parameter< double >::type death(deathSEXP);
-    Rcpp::traits::input_parameter< double >::type lag(lagSEXP);
-    Rcpp::traits::input_parameter< double >::type phi(phiSEXP);
-    Rcpp::traits::input_parameter< double >::type poisson(poissonSEXP);
-    Rcpp::traits::input_parameter< const bool& >::type loglik(loglikSEXP);
-    rcpp_result_gen = Rcpp::wrap(sum_probs(m, n, e, w, cv, death, lag, phi, poisson, loglik));
-    return rcpp_result_gen;
-END_RCPP
-}
 // optim_m_from_probs
 std::vector<double> optim_m_from_probs(double& current_m, double& lower_m, double& upper_m, double& R, double& k1, double& k2, double& poisson1, double& poisson2, std::vector<double>& seq1, std::vector<double>& seq2, std::vector<double>& prob1, std::vector<double>& prob2, double& m1, double& m2, bool& prob1_boost, bool& prob2_boost, bool verbose);
 RcppExport SEXP _mlemur_optim_m_from_probs(SEXP current_mSEXP, SEXP lower_mSEXP, SEXP upper_mSEXP, SEXP RSEXP, SEXP k1SEXP, SEXP k2SEXP, SEXP poisson1SEXP, SEXP poisson2SEXP, SEXP seq1SEXP, SEXP seq2SEXP, SEXP prob1SEXP, SEXP prob2SEXP, SEXP m1SEXP, SEXP m2SEXP, SEXP prob1_boostSEXP, SEXP prob2_boostSEXP, SEXP verboseSEXP) {
@@ -509,8 +470,6 @@ static const R_CallMethodDef CallEntries[] = {
     {"_mlemur_aux_seq_death_ext_n0", (DL_FUNC) &_mlemur_aux_seq_death_ext_n0, 6},
     {"_mlemur_prob_mutations_n0_boost", (DL_FUNC) &_mlemur_prob_mutations_n0_boost, 10},
     {"_mlemur_prob_mutations_n0", (DL_FUNC) &_mlemur_prob_mutations_n0, 10},
-    {"_mlemur_prob_mutations", (DL_FUNC) &_mlemur_prob_mutations, 9},
-    {"_mlemur_sum_probs", (DL_FUNC) &_mlemur_sum_probs, 10},
     {"_mlemur_optim_m_from_probs", (DL_FUNC) &_mlemur_optim_m_from_probs, 17},
     {NULL, NULL, 0}
 };

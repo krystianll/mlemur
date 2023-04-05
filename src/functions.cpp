@@ -198,7 +198,7 @@ std::vector<double> aux_seq_integrate_s(double e=1, double w=1, double d=0, doub
   int k;
   std::vector<double> res(n+1);
   
-  if (e==1 & d==0) {
+  if (e==1 && d==0) {
     auto f = [&r, &k](double x) {
       return (r*pow(x,r)*pow(1.-x,k-1));
     };
@@ -2125,7 +2125,7 @@ std::vector<double> aux_seq_integrate_s_n0(double e=1, double w=1, double d=0, d
   int k;
   std::vector<double> res(n-n0+1);
   
-  if (e==1 & d==0) {
+  if (e==1 && d==0) {
     auto f = [&r, &k](double x) {
       return (r*pow(x,r)*pow(1.-x,k-1));
     };
@@ -2944,100 +2944,6 @@ void derivatives_power_boost(double &U, double &J, double &loglik, const double 
   U=static_cast<double>(xU);
   J=static_cast<double>(xJ);
   loglik=static_cast<double>(xloglik);
-}
-
-/// GENERAL FUNCTION FOR CALCULATING PMF - NO DERIVATIVES ///
-
-// [[Rcpp::export]]
-std::vector<double> prob_mutations(double m, int n, double e=1, double w=1, double cv=0, double death=0, double lag=0, double phi=0, double poisson=0){
-  std::vector<double> seq(n);
-  std::vector<double> prob(n);
-  
-  if ((death==0) && (lag==0) && (phi==0)) {
-    seq=aux_seq(e, w, n-1);
-  } else if ((lag!=0) && (w==1) && (death==0) && (phi==0)) {
-    seq=aux_seq_lag_s_ext(e, lag, n-1);
-  } else if ((death!=0) && (lag==0) && (phi==0)) {
-    seq=aux_seq_death_ext(e, w, death/(1.-death), n-1);
-  } else {
-    seq=aux_seq_integrate_s(e, w, death/(1.-death), lag, phi, n-1);
-  };
-  
-  if (cv==0) {
-    prob=prob_ld(m, seq, n);
-  } else {
-    double k=1/cv/cv;
-    double A=m/k;
-    std::vector<double> xi(n);
-    xi=xi_seq(A, seq, n);
-    prob=prob_b0(A, k, seq[0], xi, n);
-  };
-  
-  if (poisson==0) {
-    return prob;
-  } else {
-    std::vector<double> prob_p(n);
-    prob_p=prob_pois(poisson, n);
-    std::vector<double> prob_ldp(n);
-    prob_ldp=prob_ld_deriv(prob, prob_p, n);
-    return prob_ldp;
-  };
-}
-
-// not exported
-std::vector<mpfr_20> prob_mutations(mpfr_20 m, int n, double e=1, double w=1, double cv=0, double death=0, double lag=0, double phi=0, double poisson=0){
-  std::vector<double> seq(n);
-  std::vector<mpfr_20> prob(n);
-  
-  if (death==0 & lag==0 & phi==0) {
-    seq=aux_seq(e, w, n-1);
-  } else if (lag!=0 & w==1 & death==0 & phi==0) {
-    seq=aux_seq_lag_s_ext(e, lag, n-1);
-  } else if (death!=0 & lag==0 & phi==0) {
-    seq=aux_seq_death_ext(e, w, death/(1.-death), n-1);
-  } else {
-    seq=aux_seq_integrate_s(e, w, death/(1.-death), lag, phi, n-1);
-  };
-  
-  if (cv==0) {
-    prob=prob_ld(m, seq, n);
-  } else {
-    double k=1/cv/cv;
-    mpfr_20 A=m/k;
-    std::vector<mpfr_20> xi(n);
-    xi=xi_seq(A, seq, n);
-    prob=prob_b0(A, k, seq[0], xi, n);
-  };
-  
-  if (poisson==0) {
-    return prob;
-  } else {
-    std::vector<double> prob_p(n);
-    prob_p=prob_pois(poisson, n);
-    std::vector<mpfr_20> prob_ldp(n);
-    prob_ldp=prob_ld_deriv(prob, prob_p, n);
-    return prob_ldp;
-  };
-}
-
-// [[Rcpp::export]]
-double sum_probs(double m, int n, double e=1, double w=1, double cv=0, double death=0, double lag=0, double phi=0, double poisson=0, const bool &loglik=false) {
-  std::vector<double> prob(n);
-  double sum=0;
-  prob = prob_mutations(m, n, e, w, cv, death, lag, phi, poisson);
-  for (int i=0; i<prob.size(); ++i){
-    if (loglik) {sum+=log(prob[i]);} else {sum+=prob[i];}
-  }
-  if (std::abs(sum) < std::numeric_limits<double>::epsilon()) {
-    std::vector<mpfr_20> probx(n);
-    probx = prob_mutations(static_cast<mpfr_20>(m), n, e, w, cv, death, lag, phi, poisson);
-    mpfr_20 sumx=0;
-    for (int i=0; i<probx.size(); ++i){
-      if (loglik) {sumx+=log(probx[i]);} else {sumx+=probx[i];}
-    }
-    sum = static_cast<double>(sumx);
-  }
-  return sum;
 }
 
 // not exported
