@@ -97,14 +97,6 @@ prob_mutations_n0 <- function(m, e = 1, w = 1, cv = 0, death = 0, lag = 0, phi =
     .Call(`_mlemur_prob_mutations_n0`, m, e, w, cv, death, lag, phi, poisson, cdf, maxiter)
 }
 
-prob_mutations <- function(m, n, e = 1, w = 1, cv = 0, death = 0, lag = 0, phi = 0, poisson = 0) {
-    .Call(`_mlemur_prob_mutations`, m, n, e, w, cv, death, lag, phi, poisson)
-}
-
-sum_probs <- function(m, n, e = 1, w = 1, cv = 0, death = 0, lag = 0, phi = 0, poisson = 0, loglik = FALSE) {
-    .Call(`_mlemur_sum_probs`, m, n, e, w, cv, death, lag, phi, poisson, loglik)
-}
-
 optim_m_from_probs <- function(current_m, lower_m, upper_m, R, k1, k2, poisson1, poisson2, seq1, seq2, prob1, prob2, m1, m2, prob1_boost, prob2_boost, verbose = FALSE) {
     .Call(`_mlemur_optim_m_from_probs`, current_m, lower_m, upper_m, R, k1, k2, poisson1, poisson2, seq1, seq2, prob1, prob2, m1, m2, prob1_boost, prob2_boost, verbose)
 }

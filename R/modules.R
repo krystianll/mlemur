@@ -732,7 +732,7 @@ countsPlatingLoadDataset <- function(input, output, session, SettingsPlatingID =
           }
           for (name in names(choices)) {
             if (name %in% c("VolumeTotal", "VolumeSelective", "DilutionSelective", "VolumeNonselective", "DilutionNonselective", "CountsSelective",
-                            "Fitness", "PlatingEfficiency", "MeanCells", "CV", "Lag", "Residual", "Death", "Inoculum", "CountsNonselective") && !is.na(choices[[name]])) {
+                            "Fitness", "PlatingEfficiency", "MeanCells", "CV", "Lag", "Residual", "Death", "Inoculum", "CountsNonselective") && all(!is.na(choices[[name]]))) {
               if (length(choices[[name]]) > 1) {choice <- paste(as.character(choices[[name]]), collapse = "\n")} else {choice <- as.character(choices[[name]])}
               updateTextInput(session = session, inputId = name, value = choice)
             }
