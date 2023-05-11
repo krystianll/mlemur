@@ -1,12 +1,14 @@
 # mlemur
 ## Simplest way to install if you have an Intel machine (Windows, Intel-based older Macs)
-1. Install newest version of R (currently 4.3.0) in the default location from <https://cran.r-project.org/bin/windows/base/>
+1. Install newest version of R (currently 4.3.0) in the default location:
+- For Intel Macs use the following link: <https://cran.r-project.org/bin/macosx/base/>
+- For Windows machines use the following link: <https://cran.r-project.org/bin/windows/base/>
 
-2. Install the corresponding version of RTools (e.g., if R version is 4.3.x, then RTools must be 4.3) in the default location from <https://cran.r-project.org/bin/windows/Rtools/>
+2. Windows only: Install the corresponding version of RTools (e.g., if R version is 4.3.x, then RTools must be 4.3) in the default location from <https://cran.r-project.org/bin/windows/Rtools/>
 
-2. Locate and run R.exe or R.app
+3. Locate and run R.exe or R.app
 
-3. In the R main window, copy the following command to R console and press Enter:
+4. In the R main window, copy the following command to R console and press Enter:
 ```{r eval=FALSE, warning=TRUE}
 install.packages('mlemur', repos = c('https://krystianll.r-universe.dev', 'https://cloud.r-project.org'))
 ```
