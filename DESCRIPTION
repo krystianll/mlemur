@@ -1,8 +1,8 @@
 Package: mlemur
 Type: Package
 Title: MLE MUtatution Rate Calculator
-Version: 0.9.6.4
-Date: 2023-04-03
+Version: 0.9.6.5
+Date: 2023-05-09
 Authors@R: c(person("Krystian", "Lazowski", role = c("aut", "cre"),
 	           email = "lazowski.krystian@outlook.com", comment = c(ORCID="0000-0001-5163-7026")),
 	           person("Qi", "Zheng", role = "ctb", comment = "The code for simulating fluctuation experiments,
