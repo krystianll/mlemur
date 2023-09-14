@@ -15,6 +15,7 @@ Maintainer: Krystian Lazowski <klazowski@ibb.waw.pl>
 Description: A tool for calculating maximum likelihood-based mutation rates,
   confidence intervals, and P values. Offers graphical user interface built with shiny.
   Based on rSalvador by Qi Zheng <https://github.com/eeeeeric/rSalvador>.
+  This project was supported by National Science Centre, Poland (PRELUDIUM Grant 2019/35/N/NZ1/03402).
 License: GPL (>= 2)
 SystemRequirements: gmp (>=6.2.1), mpfr (>=4.1.0)
 SystemRequirementsNote: 'MPFR' (MP Floating-Point Reliable Library,
