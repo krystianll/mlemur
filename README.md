@@ -1,4 +1,6 @@
 # mlemur
+This project was supported by National Science Centre, Poland (PRELUDIUM Grant 2019/35/N/NZ1/03402).
+
 ## Simplest way to install if you have an Intel machine (Windows, Intel-based older Macs)
 1. Install newest version of R (currently 4.3.0) in the default location:
 - For Intel Macs use the following link: <https://cran.r-project.org/bin/macosx/base/>
