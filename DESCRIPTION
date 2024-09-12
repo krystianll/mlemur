@@ -26,5 +26,5 @@ Imports: Rcpp (>= 1.0.9), stats, utils, shinyFeedback, shinyWidgets, shinyjqui, 
 LinkingTo: Rcpp, BH
 RoxygenNote: 7.2.3
 NeedsCompilation: yes
-StagedInstall: yes
+StagedInstall: no
 Encoding: UTF-8
