@@ -1,3 +1,4 @@
+[![Build package](https://github.com/r-universe/krystianll/actions/workflows/build.yml/badge.svg?branch=master)](https://github.com/r-universe/krystianll/actions/workflows/build.yml)
 # mlemur
 This project was supported by National Science Centre, Poland (PRELUDIUM Grant 2019/35/N/NZ1/03402).
 
