@@ -1,6 +1,2 @@
 CXX_STD = CXX17
-PKG_LIBS=$(PKG_LDFLAGS) -lmpfr -lgmp
-# include standard C library
-LDFLAGS += -lc
-# include standard math library
-LDFLAGS += -lm
+PKG_LIBS=$(PKG_LDFLAGS) -lmpfr -lgmp -lm -lc
