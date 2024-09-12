@@ -24,7 +24,7 @@ SystemRequirementsNote: 'MPFR' (MP Floating-Point Reliable Library,
 Depends: R (>= 4.1.0), shiny
 Imports: Rcpp (>= 1.0.9), stats, utils, shinyFeedback, shinyWidgets, shinyjqui, shinyjs, writexl, readxl, clipr, reactable, Ryacas, boot
 LinkingTo: Rcpp, BH
-RoxygenNote: 7.2.3
+RoxygenNote: 7.3.2
 NeedsCompilation: yes
 StagedInstall: no
 Encoding: UTF-8

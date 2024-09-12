@@ -1,4 +1,5 @@
 // [[Rcpp::depends(BH)]]
+#include <stdio.h>
 #include <Rcpp.h>
 using namespace Rcpp;
 #include <boost/multiprecision/mpfr.hpp>
